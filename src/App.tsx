@@ -1,122 +1,1833 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import React, { useState, useMemo } from 'react';
+import {
+  RefreshCw,
+  Mail,
+  CheckSquare,
+  Square,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  TrendingUp,
+  Users,
+  Award,
+  Search,
+  Filter,
+  ChevronRight,
+  Clock,
+  Edit3,
+  Send,
+  History,
+  X,
+  Building2,
+  ChevronDown,
+  ChevronUp,
+  ArrowUpDown,
+  Info,
+  Sparkles,
+  ExternalLink,
+  ShieldAlert,
+  Calendar
+} from 'lucide-react';
 
-function App() {
-  const [count, setCount] = useState(0)
+// ==========================================
+// 1. DATA & DOMAIN TYPES
+// ==========================================
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+export interface RawMember {
+  id: string;
+  org: string;
+  executive: string;
+  team: string;
+  name: string;
+  rank: 'G1' | 'G2' | 'G3';
+  badges: string[];
 }
 
-export default App
+export interface MemberProcess extends RawMember {
+  missingBadges: string[];
+  isFulfilled: boolean;
+  deficientCount: number;
+}
+
+export interface EmailRecord {
+  id: string;
+  date: string;
+  sender: string;
+  subject: string;
+  recipient: string;
+  targetCount?: number;
+  preview: string;
+}
+
+// Badge system dictionary
+export const BADGE_DICT: Record<string, { category: string; levelName: string; fullName: string; color: string }> = {
+  DS: { category: 'Data Science', levelName: '데이터 사이언스', fullName: 'Data Science', color: 'blue' },
+  CL: { category: 'Citizen Dev', levelName: '시티즌 개발', fullName: 'Citizen Developer', color: 'emerald' },
+  DA: { category: 'Data Analytics', levelName: '데이터 분석', fullName: 'Data Analytics', color: 'indigo' },
+  PE: { category: 'Prompt Eng', levelName: '프롬프트 엔지니어링', fullName: 'Prompt Engineering', color: 'purple' },
+  DV: { category: 'Data Viz', levelName: '데이터 시각화', fullName: 'Data Visualization', color: 'cyan' },
+  PP: { category: 'Python', levelName: '파이썬 프로그래밍', fullName: 'Python Programming', color: 'amber' },
+  ML: { category: 'Machine Learning', levelName: '머신러닝', fullName: 'Machine Learning', color: 'violet' },
+  AU: { category: 'Automation', levelName: '업무 자동화', fullName: 'Automation', color: 'teal' },
+  TB: { category: 'Tableau', levelName: '태블로', fullName: 'Tableau', color: 'orange' },
+  DOE: { category: 'DOE', levelName: '실험계획법', fullName: 'Design of Experiments', color: 'rose' }
+};
+
+export const LEVEL_NAMES: Record<string, string> = {
+  Y: 'Yellow',
+  G: 'Green',
+  B: 'Blue',
+  SC: 'Silver Champion',
+  GC: 'Gold Champion'
+};
+
+export const LEVEL_WEIGHT: Record<string, number> = {
+  Y: 1,
+  G: 2,
+  B: 3,
+  SC: 4,
+  GC: 5
+};
+
+// Mandatory badge requirements from PDF 2
+export const REQ_MAP: Record<'G1' | 'G2' | 'G3', string[]> = {
+  G1: ['DS_G', 'CL_G', 'DA_G', 'PE_G', 'DV_G'],
+  G2: ['DA_B', 'PP_G', 'ML_G', 'AU_B'],
+  G3: ['ML_B', 'AU_B', 'PP_B']
+};
+
+export function parseBadge(badgeStr: string): { cat: string; level: string } {
+  const parts = badgeStr.split('_');
+  if (parts.length === 2) {
+    return { cat: parts[0], level: parts[1] };
+  }
+  return { cat: badgeStr, level: '' };
+}
+
+export function hasBadgeQualified(userBadges: string[], reqBadge: string): boolean {
+  const { cat: reqCat, level: reqLevel } = parseBadge(reqBadge);
+  const reqWeight = LEVEL_WEIGHT[reqLevel] || 0;
+  for (const b of userBadges) {
+    const { cat: bCat, level: bLevel } = parseBadge(b);
+    if (bCat === reqCat) {
+      if ((LEVEL_WEIGHT[bLevel] || 0) >= reqWeight) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Packed raw members data (generated from PDF 1 & PDF 2)
+const PACKED_MEMBERS_DATA: string[] = ["emp_1|기초소재사업본부|이임원|품질팀|고혁호|G3|DV_Y,DS_Y", "emp_2|기초소재사업본부|이임원|품질팀|권준성|G3|DOE_G,AU_Y,ML_Y", "emp_3|기초소재사업본부|이임원|품질팀|손영하|G3|CL_SC,DV_B,PP_Y", "emp_4|기초소재사업본부|이임원|품질팀|배훈상|G1|AU_Y", "emp_5|기초소재사업본부|이임원|품질팀|김은진|G1|DA_Y", "emp_6|기초소재사업본부|이임원|품질팀|서현우|G2|DV_G,TB_Y,PE_G", "emp_7|기초소재사업본부|이임원|품질팀|황훈수|G3|CL_Y,PE_G,PP_Y", "emp_8|기초소재사업본부|이임원|품질팀|안우하|G1|ML_Y", "emp_9|기초소재사업본부|이임원|품질팀|양현우|G1|DOE_Y,CL_G", "emp_10|기초소재사업본부|이임원|품질팀|조현승|G2|AU_Y,ML_Y", "emp_11|기초소재사업본부|이임원|품질팀|윤철훈|G3|PP_Y,TB_G,DV_Y", "emp_12|기초소재사업본부|이임원|품질팀|홍준영|G1|PE_Y,DV_Y,CL_Y", "emp_13|기초소재사업본부|이임원|품질팀|조민민|G2|DS_G", "emp_14|기초소재사업본부|이임원|품질팀|양민우|G3|DS_Y", "emp_15|기초소재사업본부|이임원|품질팀|안민현|G1|PP_Y,TB_Y,DS_Y", "emp_16|기초소재사업본부|이임원|품질팀|박민태|G1|PE_SC,DV_G,DS_SC,DOE_G,DA_G,AU_B,PP_B", "emp_17|기초소재사업본부|이임원|품질팀|문진민|G2|TB_G,CL_Y", "emp_18|기초소재사업본부|이임원|품질팀|신성동|G2|DA_Y,TB_Y", "emp_19|기초소재사업본부|이임원|구매팀|고민우|G3|DOE_Y,AU_Y,TB_G", "emp_20|기초소재사업본부|이임원|구매팀|박승훈|G1|TB_B,DOE_GC,ML_Y,DA_G,PP_SC,AU_GC,CL_GC,DS_B", "emp_21|기초소재사업본부|이임원|구매팀|서준민|G2|ML_B,DV_GC,PP_SC", "emp_22|기초소재사업본부|이임원|구매팀|정민성|G2|DV_B,TB_G,DA_GC,PE_SC,ML_B,AU_Y,CL_GC,PP_B,DOE_G", "emp_23|기초소재사업본부|이임원|구매팀|안동호|G2|DV_Y,PP_Y", "emp_24|기초소재사업본부|이임원|구매팀|황성훈|G2|PP_Y,PE_Y", "emp_25|기초소재사업본부|이임원|구매팀|손민민|G2|DS_G,DV_Y,PE_Y", "emp_26|기초소재사업본부|이임원|구매팀|송훈준|G3|DV_Y,DA_Y,ML_Y", "emp_27|기초소재사업본부|이임원|구매팀|박지진|G2|DA_G,ML_SC,AU_SC,DV_Y,TB_SC,DOE_SC", "emp_28|기초소재사업본부|이임원|구매팀|김수원|G1|DS_Y,PE_Y,CL_Y", "emp_29|기초소재사업본부|이임원|구매팀|최우아|G3|DOE_Y", "emp_30|기초소재사업본부|이임원|구매팀|양현승|G3|PP_G,PE_GC,CL_GC,DS_B,DV_B", "emp_31|기초소재사업본부|이임원|구매팀|송훈호|G3|AU_Y", "emp_32|기초소재사업본부|이임원|구매팀|이민성|G3|TB_Y,DS_Y,DV_G", "emp_33|기초소재사업본부|이임원|구매팀|고진승|G2|PE_Y,DV_Y", "emp_34|기초소재사업본부|이임원|구매팀|신영재|G1|DOE_SC,DS_B,ML_SC", "emp_35|기초소재사업본부|이임원|구매팀|배지수|G1|PE_GC,DS_Y,PP_B,DV_Y,TB_SC", "emp_36|기초소재사업본부|이임원|구매팀|송진태|G2|", "emp_37|기초소재사업본부|이임원|연구팀|조영훈|G1|", "emp_38|기초소재사업본부|이임원|연구팀|임원아|G2|", "emp_39|기초소재사업본부|이임원|연구팀|최수민|G3|", "emp_40|기초소재사업본부|이임원|연구팀|오우동|G2|", "emp_41|기초소재사업본부|이임원|연구팀|신동민|G2|DS_Y,DOE_Y", "emp_42|기초소재사업본부|이임원|연구팀|문민재|G1|PE_G", "emp_43|기초소재사업본부|이임원|연구팀|이우민|G2|ML_G", "emp_44|기초소재사업본부|이임원|연구팀|백서민|G2|DOE_Y", "emp_45|기초소재사업본부|이임원|연구팀|송성준|G2|DA_Y,PP_Y", "emp_46|기초소재사업본부|이임원|연구팀|이혁준|G2|DV_Y,PE_Y,AU_Y", "emp_47|기초소재사업본부|이임원|연구팀|서현동|G2|PE_Y,CL_G,AU_Y,DOE_SC", "emp_48|기초소재사업본부|이임원|연구팀|허성아|G2|CL_G,DOE_Y,DV_Y", "emp_49|기초소재사업본부|이임원|연구팀|오동동|G3|CL_G,ML_G,PE_Y", "emp_50|기초소재사업본부|이임원|연구팀|권재호|G1|PE_Y", "emp_51|기초소재사업본부|이임원|연구팀|배은진|G2|PE_Y,DA_G,DV_Y", "emp_52|기초소재사업본부|이임원|연구팀|윤연우|G2|ML_G", "emp_53|기초소재사업본부|이임원|연구팀|문진동|G3|PP_GC,CL_Y,DOE_Y,AU_GC,DV_G", "emp_54|기초소재사업본부|이임원|연구팀|황서재|G3|ML_B,DA_G,TB_SC,DS_Y,AU_SC", "emp_55|기초소재사업본부|이임원|회계팀|문훈민|G3|TB_Y,DV_Y", "emp_56|기초소재사업본부|이임원|회계팀|정영연|G2|DV_Y", "emp_57|기초소재사업본부|이임원|회계팀|신민호|G3|AU_G,ML_G", "emp_58|기초소재사업본부|이임원|회계팀|유승성|G3|DA_Y,PE_G,PP_Y", "emp_59|기초소재사업본부|이임원|회계팀|배연정|G1|DS_G,CL_G,DOE_Y", "emp_60|기초소재사업본부|이임원|회계팀|송도도|G2|ML_Y", "emp_61|기초소재사업본부|이임원|회계팀|안연동|G3|PP_Y,DA_G", "emp_62|기초소재사업본부|이임원|회계팀|박동정|G2|DA_G,DS_Y", "emp_63|기초소재사업본부|이임원|회계팀|최진수|G2|CL_G", "emp_64|기초소재사업본부|이임원|회계팀|유재원|G2|TB_B,PE_GC,CL_GC", "emp_65|기초소재사업본부|이임원|회계팀|고호민|G1|PE_Y,DV_Y", "emp_66|기초소재사업본부|이임원|회계팀|이승현|G2|DOE_Y,ML_Y", "emp_67|기초소재사업본부|이임원|회계팀|박동철|G2|CL_G,DV_Y,PP_G", "emp_68|기초소재사업본부|이임원|회계팀|서현정|G1|AU_Y", "emp_69|기초소재사업본부|이임원|회계팀|양지민|G2|PP_G,AU_Y,DS_Y", "emp_70|기초소재사업본부|이임원|회계팀|조진아|G1|DA_G,DS_G,CL_G", "emp_71|기초소재사업본부|이임원|회계팀|서진수|G1|", "emp_72|기초소재사업본부|이임원|회계팀|서현진|G1|", "emp_73|기초소재사업본부|정임원|구매1팀|서상성|G3|", "emp_74|기초소재사업본부|정임원|구매1팀|장동우|G3|", "emp_75|기초소재사업본부|정임원|구매1팀|손훈상|G2|", "emp_76|기초소재사업본부|정임원|구매1팀|송민민|G2|", "emp_77|기초소재사업본부|정임원|구매1팀|전민민|G3|", "emp_78|기초소재사업본부|정임원|구매1팀|전진상|G2|", "emp_79|기초소재사업본부|정임원|구매1팀|한정영|G1|", "emp_80|기초소재사업본부|정임원|구매1팀|송상성|G2|", "emp_81|기초소재사업본부|정임원|구매1팀|조철승|G2|", "emp_82|기초소재사업본부|정임원|구매1팀|권호진|G2|TB_Y,CL_G,PE_Y", "emp_83|기초소재사업본부|정임원|구매1팀|유성수|G2|DS_Y,DV_Y,AU_G", "emp_84|기초소재사업본부|정임원|구매1팀|이동우|G2|AU_G,ML_Y,TB_Y", "emp_85|기초소재사업본부|정임원|구매1팀|김서호|G3|PE_G,PP_Y,CL_G", "emp_86|기초소재사업본부|정임원|구매1팀|황호우|G3|AU_Y", "emp_87|기초소재사업본부|정임원|구매1팀|배연현|G2|TB_Y,DA_G,DV_G", "emp_88|기초소재사업본부|정임원|구매1팀|류현철|G1|TB_GC,PP_GC,DOE_SC,DA_GC,CL_SC,DV_B,AU_SC", "emp_89|기초소재사업본부|정임원|구매1팀|백동은|G2|DA_Y,DS_Y,TB_Y", "emp_90|기초소재사업본부|정임원|구매1팀|남수현|G1|DA_SC,TB_SC,PE_B", "emp_91|기초소재사업본부|정임원|전략팀|송현재|G1|AU_Y,DV_G", "emp_92|기초소재사업본부|정임원|전략팀|배준상|G2|DV_Y,PP_Y,TB_Y", "emp_93|기초소재사업본부|정임원|전략팀|권동상|G3|PE_G", "emp_94|기초소재사업본부|정임원|전략팀|송정성|G1|AU_Y,DS_Y", "emp_95|기초소재사업본부|정임원|전략팀|윤호훈|G3|ML_Y,PE_G,DS_Y", "emp_96|기초소재사업본부|정임원|전략팀|장재지|G2|DV_Y,DOE_Y,PP_G", "emp_97|기초소재사업본부|정임원|전략팀|남수연|G1|DOE_Y,DS_Y,AU_Y", "emp_98|기초소재사업본부|정임원|전략팀|황민호|G3|DA_Y,AU_Y", "emp_99|기초소재사업본부|정임원|전략팀|양태준|G2|DS_G,AU_Y", "emp_100|기초소재사업본부|정임원|전략팀|신동성|G2|ML_B,DA_SC,DS_G,CL_Y", "emp_101|기초소재사업본부|정임원|전략팀|최윤훈|G2|CL_Y", "emp_102|기초소재사업본부|정임원|전략팀|황정성|G2|DOE_GC,DA_Y,AU_B,DS_G,TB_Y", "emp_103|기초소재사업본부|정임원|전략팀|유진민|G2|DS_Y,AU_Y", "emp_104|기초소재사업본부|정임원|전략팀|홍아진|G1|AU_Y", "emp_105|기초소재사업본부|정임원|전략팀|조현우|G1|DV_G", "emp_106|기초소재사업본부|정임원|전략팀|문현성|G2|PP_SC,ML_B,DA_SC,TB_SC,PE_GC,AU_GC,DOE_G,DS_G", "emp_107|기초소재사업본부|정임원|전략팀|손현지|G2|PP_Y", "emp_108|기초소재사업본부|정임원|전략팀|유민태|G3|ML_B,DA_SC,DOE_Y", "emp_109|기초소재사업본부|정임원|지원팀|한민민|G2|PP_SC,ML_B,DS_Y,PE_GC,CL_Y,DV_Y,TB_SC,DA_SC,AU_SC", "emp_110|기초소재사업본부|정임원|지원팀|양민재|G1|DA_B,AU_B,DOE_GC,DV_G", "emp_111|기초소재사업본부|정임원|지원팀|박성상|G1|DV_G", "emp_112|기초소재사업본부|정임원|지원팀|양호민|G2|DOE_Y", "emp_113|기초소재사업본부|정임원|지원팀|한영정|G3|DA_Y,DOE_Y,CL_G", "emp_114|기초소재사업본부|정임원|지원팀|윤동우|G1|", "emp_115|기초소재사업본부|정임원|지원팀|최아민|G3|", "emp_116|기초소재사업본부|정임원|지원팀|손재은|G1|", "emp_117|기초소재사업본부|정임원|지원팀|남훈민|G1|", "emp_118|기초소재사업본부|정임원|지원팀|정우훈|G3|", "emp_119|기초소재사업본부|정임원|지원팀|유수혁|G3|", "emp_120|기초소재사업본부|정임원|지원팀|백진우|G1|", "emp_121|기초소재사업본부|정임원|지원팀|전지성|G3|", "emp_122|기초소재사업본부|정임원|지원팀|한민민|G3|", "emp_123|기초소재사업본부|정임원|지원팀|한우수|G1|TB_SC,DV_B,PP_G,CL_SC,DS_G", "emp_124|기초소재사업본부|정임원|지원팀|정진영|G3|PP_G,AU_G,DOE_Y", "emp_125|기초소재사업본부|정임원|지원팀|배재수|G1|AU_Y,DV_Y", "emp_126|기초소재사업본부|정임원|지원팀|송훈훈|G3|DS_Y,ML_Y,PP_Y", "emp_127|첨단소재사업본부|송임원|품질팀|이성민|G2|TB_SC,DV_Y,DS_GC,PE_Y", "emp_128|첨단소재사업본부|송임원|품질팀|윤태승|G3|DV_G", "emp_129|첨단소재사업본부|송임원|품질팀|한호현|G2|DA_G,PP_Y,ML_GC", "emp_130|첨단소재사업본부|송임원|품질팀|황우상|G3|DA_SC,TB_GC,CL_Y", "emp_131|첨단소재사업본부|송임원|품질팀|안성훈|G2|ML_Y,TB_G", "emp_132|첨단소재사업본부|송임원|품질팀|송연서|G3|DS_Y", "emp_133|첨단소재사업본부|송임원|품질팀|황성서|G3|DA_Y", "emp_134|첨단소재사업본부|송임원|품질팀|손민태|G1|CL_Y,DV_Y,TB_Y", "emp_135|첨단소재사업본부|송임원|품질팀|손영현|G3|ML_G,PE_G,DS_Y", "emp_136|첨단소재사업본부|송임원|품질팀|오민우|G2|DS_G", "emp_137|첨단소재사업본부|송임원|품질팀|손수동|G1|DV_B,DS_GC,AU_GC,TB_SC,PE_B,CL_G,DOE_SC,ML_SC", "emp_138|첨단소재사업본부|송임원|품질팀|권재훈|G3|DS_Y,TB_Y,AU_Y", "emp_139|첨단소재사업본부|송임원|품질팀|신준은|G2|DA_G", "emp_140|첨단소재사업본부|송임원|품질팀|최동진|G1|DS_G,PE_G,DV_G", "emp_141|첨단소재사업본부|송임원|품질팀|강진성|G1|PE_Y,PP_Y,ML_Y", "emp_142|첨단소재사업본부|송임원|품질팀|양준도|G1|TB_GC,AU_B,CL_G,DA_GC,DS_B", "emp_143|첨단소재사업본부|송임원|품질팀|정호수|G3|PP_Y,ML_Y", "emp_144|첨단소재사업본부|송임원|품질팀|류우민|G2|PP_Y,DS_G", "emp_145|첨단소재사업본부|송임원|품질5팀|권호지|G1|DOE_Y", "emp_146|첨단소재사업본부|송임원|품질5팀|황성우|G1|DV_Y,DA_G", "emp_147|첨단소재사업본부|송임원|품질5팀|오동정|G2|PP_Y,DA_Y", "emp_148|첨단소재사업본부|송임원|품질5팀|송지지|G1|DS_G,PE_GC,DA_GC,CL_G", "emp_149|첨단소재사업본부|송임원|품질5팀|류정상|G1|TB_Y,AU_Y,DV_Y", "emp_150|첨단소재사업본부|송임원|품질5팀|양승현|G2|CL_Y", "emp_151|첨단소재사업본부|송임원|품질5팀|김준진|G1|AU_G,DOE_Y,TB_Y", "emp_152|첨단소재사업본부|송임원|품질5팀|이우상|G3|AU_Y,PE_G,CL_Y", "emp_153|첨단소재사업본부|송임원|품질5팀|권지정|G3|AU_Y,PP_Y,DA_Y", "emp_154|첨단소재사업본부|송임원|품질5팀|김태수|G1|DS_G,CL_Y", "emp_155|첨단소재사업본부|송임원|품질5팀|권진현|G2|PE_Y,DOE_Y", "emp_156|첨단소재사업본부|송임원|품질5팀|허호은|G1|", "emp_157|첨단소재사업본부|송임원|품질5팀|서훈재|G1|", "emp_158|첨단소재사업본부|송임원|품질5팀|배훈수|G1|", "emp_159|첨단소재사업본부|송임원|품질5팀|남진호|G1|", "emp_160|첨단소재사업본부|송임원|품질5팀|전재민|G2|", "emp_161|첨단소재사업본부|송임원|품질5팀|황민우|G2|", "emp_162|첨단소재사업본부|송임원|품질5팀|고철수|G2|", "emp_163|첨단소재사업본부|송임원|전략팀|양진지|G1|", "emp_164|첨단소재사업본부|송임원|전략팀|오하호|G2|CL_Y,DS_SC,TB_SC,DV_B,DOE_GC,ML_SC,PE_SC,AU_B", "emp_165|첨단소재사업본부|송임원|전략팀|한훈하|G3|PP_Y,DS_G,DA_Y", "emp_166|첨단소재사업본부|송임원|전략팀|김영연|G2|ML_Y,PE_Y", "emp_167|첨단소재사업본부|송임원|전략팀|유훈우|G2|DS_Y,ML_Y,PP_Y", "emp_168|첨단소재사업본부|송임원|전략팀|허성영|G1|ML_Y", "emp_169|첨단소재사업본부|송임원|전략팀|손철민|G2|DOE_G", "emp_170|첨단소재사업본부|송임원|전략팀|조민민|G2|PP_Y,DV_G", "emp_171|첨단소재사업본부|송임원|전략팀|양윤호|G3|PP_G,PE_Y,DA_SC,DV_SC,AU_B", "emp_172|첨단소재사업본부|송임원|전략팀|조진우|G2|CL_Y,DA_Y", "emp_173|첨단소재사업본부|송임원|전략팀|이상성|G3|DV_Y,ML_Y,PP_Y", "emp_174|첨단소재사업본부|송임원|전략팀|전현재|G1|PP_Y,DS_GC,DA_GC,DV_Y", "emp_175|첨단소재사업본부|송임원|전략팀|오민우|G2|DOE_GC,DA_G,CL_Y,AU_B,DV_G,ML_SC,TB_B,DS_GC,PE_GC", "emp_176|첨단소재사업본부|송임원|전략팀|강민승|G1|DOE_Y,PE_Y", "emp_177|첨단소재사업본부|송임원|전략팀|백수현|G1|AU_B,CL_GC,DV_SC,PE_Y", "emp_178|첨단소재사업본부|송임원|전략팀|백승호|G2|AU_Y,PP_Y", "emp_179|첨단소재사업본부|송임원|전략팀|배수동|G1|PP_Y,DS_G,DV_Y", "emp_180|첨단소재사업본부|송임원|전략팀|손지정|G2|ML_Y", "emp_181|첨단소재사업본부|송임원|구매팀|정훈현|G2|DV_Y", "emp_182|첨단소재사업본부|송임원|구매팀|송원서|G3|TB_SC,DA_SC,DOE_SC,CL_SC,DV_SC,AU_G,DS_SC,PP_GC,ML_Y,PE_SC", "emp_183|첨단소재사업본부|송임원|구매팀|남민우|G3|DOE_G", "emp_184|첨단소재사업본부|송임원|구매팀|허수연|G2|DS_Y,CL_G,TB_SC,PP_G,ML_Y,DOE_GC,DV_SC,AU_GC,PE_G,DA_B", "emp_185|첨단소재사업본부|송임원|구매팀|백훈우|G3|AU_Y,PE_G,TB_G", "emp_186|첨단소재사업본부|송임원|구매팀|류도훈|G2|DOE_G", "emp_187|첨단소재사업본부|송임원|구매팀|고현원|G2|CL_G,PE_Y", "emp_188|첨단소재사업본부|송임원|구매팀|손영민|G2|AU_G,DS_G,ML_G", "emp_189|첨단소재사업본부|송임원|구매팀|전영태|G2|DOE_Y", "emp_190|첨단소재사업본부|송임원|구매팀|허재동|G2|PE_G,ML_Y,CL_Y", "emp_191|첨단소재사업본부|송임원|구매팀|류훈영|G1|DV_Y,AU_Y,PE_Y", "emp_192|첨단소재사업본부|송임원|구매팀|강태성|G1|AU_Y,DV_Y,PP_G", "emp_193|첨단소재사업본부|송임원|구매팀|전승승|G3|ML_G,DA_G", "emp_194|첨단소재사업본부|송임원|구매팀|남승성|G2|DOE_G,CL_Y,PP_G", "emp_195|첨단소재사업본부|송임원|구매팀|문지승|G1|", "emp_196|첨단소재사업본부|송임원|구매팀|정도우|G1|", "emp_197|첨단소재사업본부|송임원|구매팀|류수영|G2|", "emp_198|첨단소재사업본부|송임원|구매팀|백상훈|G1|", "emp_199|첨단소재사업본부|신임원|회계팀|류상준|G2|", "emp_200|첨단소재사업본부|신임원|회계팀|류태진|G1|", "emp_201|첨단소재사업본부|신임원|회계팀|윤서영|G2|", "emp_202|첨단소재사업본부|신임원|회계팀|김수호|G2|", "emp_203|첨단소재사업본부|신임원|회계팀|오호수|G3|", "emp_204|첨단소재사업본부|신임원|회계팀|전호수|G1|", "emp_205|첨단소재사업본부|신임원|회계팀|서아서|G3|TB_G,PP_Y,DA_Y", "emp_206|첨단소재사업본부|신임원|회계팀|황현현|G2|TB_Y", "emp_207|첨단소재사업본부|신임원|회계팀|한도호|G2|DOE_G", "emp_208|첨단소재사업본부|신임원|회계팀|박민지|G2|DOE_G,PP_Y,DV_Y", "emp_209|첨단소재사업본부|신임원|회계팀|장재재|G2|AU_Y,DA_Y", "emp_210|첨단소재사업본부|신임원|회계팀|안지현|G3|DOE_G,DV_Y", "emp_211|첨단소재사업본부|신임원|회계팀|허태훈|G1|PE_Y", "emp_212|첨단소재사업본부|신임원|회계팀|한현수|G3|DS_Y,PP_G,TB_G", "emp_213|첨단소재사업본부|신임원|회계팀|한상우|G2|DS_GC,CL_G,PP_SC,ML_GC,AU_SC,DA_G", "emp_214|첨단소재사업본부|신임원|회계팀|이승민|G3|PP_G,CL_SC,DS_B,AU_GC,DA_GC,DOE_GC", "emp_215|첨단소재사업본부|신임원|회계팀|장진승|G2|DS_G,DA_G", "emp_216|첨단소재사업본부|신임원|회계팀|안지성|G1|ML_Y", "emp_217|첨단소재사업본부|신임원|생산팀|서진수|G1|CL_Y", "emp_218|첨단소재사업본부|신임원|생산팀|권아상|G3|PP_B,DOE_B,DS_SC,PE_SC,DA_SC,CL_SC,AU_SC", "emp_219|첨단소재사업본부|신임원|생산팀|권민민|G3|ML_Y", "emp_220|첨단소재사업본부|신임원|생산팀|한지현|G1|DV_Y,DOE_Y", "emp_221|첨단소재사업본부|신임원|생산팀|허수태|G2|CL_G,DV_Y,PP_Y", "emp_222|첨단소재사업본부|신임원|생산팀|손우민|G2|CL_Y,DS_Y,DOE_Y", "emp_223|첨단소재사업본부|신임원|생산팀|김성승|G1|ML_Y,AU_Y", "emp_224|첨단소재사업본부|신임원|생산팀|윤승준|G3|AU_Y,ML_B,TB_Y,DA_SC", "emp_225|첨단소재사업본부|신임원|생산팀|서영연|G3|AU_G,DOE_SC,CL_Y,PP_GC", "emp_226|첨단소재사업본부|신임원|생산팀|박민민|G3|TB_G,DV_G,DS_B,AU_Y,PE_GC,CL_SC", "emp_227|첨단소재사업본부|신임원|생산팀|윤재수|G1|CL_Y", "emp_228|첨단소재사업본부|신임원|생산팀|배진현|G3|DA_Y,TB_Y,PE_Y", "emp_229|첨단소재사업본부|신임원|생산팀|박진준|G3|PE_G,TB_G", "emp_230|첨단소재사업본부|신임원|생산팀|최동준|G1|PP_G,CL_B,DOE_GC,ML_G,PE_GC", "emp_231|첨단소재사업본부|신임원|생산팀|장상성|G3|DA_G", "emp_232|첨단소재사업본부|신임원|생산팀|정은성|G2|PP_Y", "emp_233|첨단소재사업본부|신임원|생산팀|남승은|G3|PE_G,DV_Y", "emp_234|첨단소재사업본부|신임원|생산팀|허민훈|G2|PP_G", "emp_235|첨단소재사업본부|신임원|기술팀|백준성|G3|", "emp_236|첨단소재사업본부|신임원|기술팀|한영태|G3|", "emp_237|첨단소재사업본부|신임원|기술팀|박동정|G3|", "emp_238|첨단소재사업본부|신임원|기술팀|윤수수|G1|", "emp_239|첨단소재사업본부|신임원|기술팀|문진아|G3|", "emp_240|첨단소재사업본부|신임원|기술팀|황우훈|G3|", "emp_241|첨단소재사업본부|신임원|기술팀|송승성|G2|", "emp_242|첨단소재사업본부|신임원|기술팀|권우훈|G3|", "emp_243|첨단소재사업본부|신임원|기술팀|류준우|G1|", "emp_244|첨단소재사업본부|신임원|기술팀|허승우|G2|", "emp_245|첨단소재사업본부|신임원|기술팀|김재진|G2|", "emp_246|첨단소재사업본부|신임원|기술팀|황현수|G1|DA_Y,DV_Y,DS_Y", "emp_247|첨단소재사업본부|신임원|기술팀|손태우|G3|DA_Y,PP_G", "emp_248|첨단소재사업본부|신임원|기술팀|전현태|G2|PE_SC,ML_Y,TB_SC,DA_G,DS_GC,DOE_G,AU_B,PP_SC,DV_SC", "emp_249|첨단소재사업본부|신임원|기술팀|강수호|G2|DOE_Y", "emp_250|첨단소재사업본부|신임원|기술팀|신영철|G1|PP_Y,TB_Y,PE_Y", "emp_251|첨단소재사업본부|신임원|기술팀|최민준|G2|AU_Y,DOE_Y", "emp_252|첨단소재사업본부|신임원|기술팀|유훈호|G2|DV_Y,TB_G", "emp_253|특수화학사업본부|신임원|품질팀|유훈민|G2|ML_Y,AU_Y", "emp_254|특수화학사업본부|신임원|품질팀|윤지훈|G2|PE_G,DV_GC,AU_B,DS_G,DA_GC,PP_SC,CL_G", "emp_255|특수화학사업본부|신임원|품질팀|박성동|G2|PE_G,DV_B,DA_G,DOE_Y,ML_GC", "emp_256|특수화학사업본부|신임원|품질팀|송재진|G2|PE_Y,DA_G", "emp_257|특수화학사업본부|신임원|품질팀|이민성|G3|DV_Y,DOE_Y,PE_Y", "emp_258|특수화학사업본부|신임원|품질팀|신준지|G2|CL_SC,TB_B,DA_Y,ML_Y,DS_G", "emp_259|특수화학사업본부|신임원|품질팀|고훈정|G3|DS_Y", "emp_260|특수화학사업본부|신임원|품질팀|남훈훈|G2|DA_Y,DOE_Y,CL_Y", "emp_261|특수화학사업본부|신임원|품질팀|임우지|G3|ML_Y,DA_B,TB_GC,AU_G,CL_G,PP_G,PE_SC,DV_SC", "emp_262|특수화학사업본부|신임원|품질팀|정윤민|G2|DV_GC,DS_Y,DOE_G,AU_GC", "emp_263|특수화학사업본부|신임원|품질팀|이영훈|G1|CL_Y,DV_G,DS_GC,AU_Y,DOE_SC", "emp_264|특수화학사업본부|신임원|품질팀|서영동|G1|AU_Y,DA_Y,DOE_Y", "emp_265|특수화학사업본부|신임원|품질팀|남현수|G3|DOE_B,AU_B,ML_SC,PE_B,TB_B", "emp_266|특수화학사업본부|신임원|품질팀|안민도|G1|ML_Y", "emp_267|특수화학사업본부|신임원|품질팀|고동승|G1|PE_G,DOE_Y,CL_Y", "emp_268|특수화학사업본부|신임원|품질팀|류민혁|G2|AU_G,DOE_G,PE_Y", "emp_269|특수화학사업본부|신임원|품질팀|남현연|G2|DA_G", "emp_270|특수화학사업본부|신임원|품질팀|조성수|G3|DA_G,TB_G,PP_Y", "emp_271|특수화학사업본부|신임원|기획팀|백재민|G3|AU_Y,TB_Y,PP_G", "emp_272|특수화학사업본부|신임원|기획팀|홍동민|G1|DV_G,AU_G,DS_Y,ML_G,CL_SC,DA_GC,PE_G,PP_G,DOE_SC", "emp_273|특수화학사업본부|신임원|기획팀|한동동|G1|DV_Y", "emp_274|특수화학사업본부|신임원|기획팀|임동진|G2|DS_G,TB_G", "emp_275|특수화학사업본부|신임원|기획팀|홍재호|G2|DOE_Y", "emp_276|특수화학사업본부|신임원|기획팀|손상영|G2|CL_G,DOE_SC,ML_G,PP_SC,DA_GC,AU_GC", "emp_277|특수화학사업본부|신임원|기획팀|송승영|G2|TB_G,DV_SC,PP_Y,DOE_GC,ML_B,AU_G,DS_B,DA_GC", "emp_278|특수화학사업본부|신임원|기획팀|손상진|G1|", "emp_279|특수화학사업본부|신임원|기획팀|윤윤정|G3|", "emp_280|특수화학사업본부|신임원|기획팀|황현영|G2|", "emp_281|특수화학사업본부|신임원|기획팀|백호진|G1|", "emp_282|특수화학사업본부|신임원|기획팀|손우성|G3|", "emp_283|특수화학사업본부|신임원|기획팀|남현승|G2|", "emp_284|특수화학사업본부|신임원|기획팀|손동수|G1|", "emp_285|특수화학사업본부|신임원|기획팀|정지원|G3|", "emp_286|특수화학사업본부|신임원|기획팀|전현지|G3|", "emp_287|특수화학사업본부|신임원|기획팀|류준지|G1|DV_Y,DOE_G,PP_Y", "emp_288|특수화학사업본부|신임원|기획팀|정호지|G3|DOE_Y", "emp_289|특수화학사업본부|윤임원|연구팀|문동훈|G2|CL_G,ML_Y,DOE_G", "emp_290|특수화학사업본부|윤임원|연구팀|류상동|G3|AU_Y", "emp_291|특수화학사업본부|윤임원|연구팀|이우호|G1|DOE_Y,DA_Y", "emp_292|특수화학사업본부|윤임원|연구팀|최우동|G1|ML_Y,DS_Y", "emp_293|특수화학사업본부|윤임원|연구팀|백서영|G2|DA_Y,DV_Y", "emp_294|특수화학사업본부|윤임원|연구팀|조우승|G1|PP_Y", "emp_295|특수화학사업본부|윤임원|연구팀|한하진|G2|ML_Y", "emp_296|특수화학사업본부|윤임원|연구팀|오민민|G1|TB_Y,DS_Y,PP_Y", "emp_297|특수화학사업본부|윤임원|연구팀|송호민|G3|DOE_Y,AU_G", "emp_298|특수화학사업본부|윤임원|연구팀|한재민|G1|CL_G", "emp_299|특수화학사업본부|윤임원|연구팀|윤정훈|G3|TB_G", "emp_300|특수화학사업본부|윤임원|연구팀|고태지|G1|DOE_Y", "emp_301|특수화학사업본부|윤임원|연구팀|조훈진|G1|PP_Y,DOE_Y,DV_Y", "emp_302|특수화학사업본부|윤임원|연구팀|홍동재|G2|PP_GC,DOE_SC,TB_B,DA_G,AU_SC,CL_GC", "emp_303|특수화학사업본부|윤임원|연구팀|서아훈|G3|TB_Y", "emp_304|특수화학사업본부|윤임원|연구팀|유우우|G2|CL_Y,DV_G,AU_Y", "emp_305|특수화학사업본부|윤임원|연구팀|최현동|G3|CL_Y,DOE_G,DV_Y", "emp_306|특수화학사업본부|윤임원|연구팀|오성성|G1|DA_G,ML_Y,PP_Y", "emp_307|특수화학사업본부|윤임원|회계팀|유은승|G3|PP_GC,DS_Y,DV_SC", "emp_308|특수화학사업본부|윤임원|회계팀|허태진|G2|DOE_B,PE_GC,DA_SC", "emp_309|특수화학사업본부|윤임원|회계팀|남호성|G2|PE_Y", "emp_310|특수화학사업본부|윤임원|회계팀|서재승|G2|DS_G,PE_Y", "emp_311|특수화학사업본부|윤임원|회계팀|류진상|G3|TB_G", "emp_312|특수화학사업본부|윤임원|회계팀|홍연성|G2|DS_Y,TB_Y,ML_Y", "emp_313|특수화학사업본부|윤임원|회계팀|안우상|G3|CL_G", "emp_314|특수화학사업본부|윤임원|회계팀|전민수|G2|AU_G,PE_Y", "emp_315|특수화학사업본부|윤임원|회계팀|송우진|G2|ML_G", "emp_316|특수화학사업본부|윤임원|회계팀|임우원|G1|DV_Y,DS_GC,CL_SC,TB_G,PP_Y,AU_G,ML_G,DOE_GC,DA_B,PE_SC", "emp_317|특수화학사업본부|윤임원|회계팀|배승아|G1|AU_GC,DV_B,DA_B,PP_SC,DOE_SC,CL_GC,PE_SC", "emp_318|특수화학사업본부|윤임원|회계팀|유동영|G2|ML_B,DA_Y,PP_B,DS_SC,PE_GC,CL_B,AU_GC,TB_SC", "emp_319|특수화학사업본부|윤임원|회계팀|안성준|G2|PP_Y,DS_Y", "emp_320|특수화학사업본부|윤임원|회계팀|고동현|G2|TB_Y", "emp_321|특수화학사업본부|윤임원|회계팀|손정호|G1|", "emp_322|특수화학사업본부|윤임원|회계팀|조민훈|G2|", "emp_323|특수화학사업본부|윤임원|회계팀|남원민|G2|", "emp_324|특수화학사업본부|윤임원|회계팀|안수혁|G1|", "emp_325|특수화학사업본부|윤임원|인사팀|김영민|G1|", "emp_326|특수화학사업본부|윤임원|인사팀|최서진|G2|", "emp_327|특수화학사업본부|윤임원|인사팀|손우민|G3|", "emp_328|특수화학사업본부|윤임원|인사팀|박민민|G2|PP_Y,DS_Y,DV_Y", "emp_329|특수화학사업본부|윤임원|인사팀|이민지|G1|DOE_Y,AU_Y", "emp_330|특수화학사업본부|윤임원|인사팀|정승민|G3|CL_G,DOE_Y,TB_Y", "emp_331|특수화학사업본부|윤임원|인사팀|배서성|G3|DV_Y", "emp_332|특수화학사업본부|윤임원|인사팀|조진영|G3|CL_G,DV_Y,DA_Y", "emp_333|특수화학사업본부|윤임원|인사팀|백지훈|G3|AU_G", "emp_334|특수화학사업본부|윤임원|인사팀|홍현현|G1|CL_Y,PE_G,TB_G", "emp_335|특수화학사업본부|윤임원|인사팀|허성태|G2|DV_Y,DA_Y,ML_Y", "emp_336|특수화학사업본부|윤임원|인사팀|홍지하|G3|PP_G", "emp_337|특수화학사업본부|윤임원|인사팀|송민훈|G2|AU_Y,ML_Y", "emp_338|특수화학사업본부|윤임원|인사팀|백진민|G2|PE_B,ML_Y,DS_B,PP_Y,DA_G,TB_SC,AU_GC,DOE_SC", "emp_339|특수화학사업본부|윤임원|인사팀|최진우|G2|CL_Y,AU_Y,DOE_G", "emp_340|특수화학사업본부|윤임원|인사팀|이진호|G2|AU_Y,PE_Y", "emp_341|특수화학사업본부|윤임원|인사팀|문혁동|G2|DV_Y", "emp_342|특수화학사업본부|윤임원|인사팀|윤상호|G2|DA_SC,DV_B,AU_Y,DOE_SC,CL_B,DS_GC,PP_GC,PE_SC,ML_Y,TB_B", "emp_343|특수화학사업본부|윤임원|연구5팀|전수동|G3|DOE_Y,TB_Y,PP_Y", "emp_344|특수화학사업본부|윤임원|연구5팀|양아태|G1|TB_Y,PP_G,ML_Y", "emp_345|특수화학사업본부|윤임원|연구5팀|서재민|G3|DS_Y,ML_Y", "emp_346|특수화학사업본부|윤임원|연구5팀|정승은|G1|DS_G", "emp_347|특수화학사업본부|윤임원|연구5팀|홍영연|G2|DA_Y,DS_Y,CL_Y", "emp_348|특수화학사업본부|윤임원|연구5팀|양아상|G1|DV_Y,PP_Y,TB_Y", "emp_349|특수화학사업본부|윤임원|연구5팀|신훈민|G3|DA_Y,PP_G", "emp_350|특수화학사업본부|윤임원|연구5팀|권태훈|G2|AU_G,DA_Y,PE_Y", "emp_351|특수화학사업본부|윤임원|연구5팀|양원민|G2|DS_GC,ML_B,DA_SC,TB_SC,CL_GC,DOE_SC,DV_G", "emp_352|특수화학사업본부|윤임원|연구5팀|김영영|G1|AU_G,DOE_Y,DA_Y", "emp_353|특수화학사업본부|윤임원|연구5팀|최호혁|G1|ML_Y", "emp_354|특수화학사업본부|윤임원|연구5팀|한호승|G1|CL_G,DOE_Y", "emp_355|특수화학사업본부|윤임원|연구5팀|이진현|G2|DA_GC,CL_B,ML_SC", "emp_356|특수화학사업본부|윤임원|연구5팀|문정현|G1|DA_Y", "emp_357|특수화학사업본부|윤임원|연구5팀|고진진|G3|AU_G,TB_Y,DOE_G", "emp_358|특수화학사업본부|윤임원|연구5팀|문우성|G2|DOE_G", "emp_359|특수화학사업본부|윤임원|연구5팀|최영수|G2|DV_Y,DOE_Y,PE_Y", "emp_360|특수화학사업본부|윤임원|연구5팀|허연민|G2|PE_Y", "emp_361|특수화학사업본부|백임원|생산팀|허동현|G3|DV_Y,PP_Y", "emp_362|특수화학사업본부|백임원|생산팀|고윤정|G1|DA_SC,DV_Y,DOE_SC", "emp_363|특수화학사업본부|백임원|생산팀|유현민|G3|", "emp_364|특수화학사업본부|백임원|생산팀|서훈훈|G3|", "emp_365|특수화학사업본부|백임원|생산팀|박현연|G2|", "emp_366|특수화학사업본부|백임원|생산팀|홍수호|G2|", "emp_367|특수화학사업본부|백임원|생산팀|최아민|G2|", "emp_368|특수화학사업본부|백임원|생산팀|신승준|G3|", "emp_369|특수화학사업본부|백임원|생산팀|유수민|G3|DA_Y,PE_G,AU_Y", "emp_370|특수화학사업본부|백임원|생산팀|강지성|G2|AU_Y,DA_Y", "emp_371|특수화학사업본부|백임원|생산팀|고훈성|G3|PP_Y,AU_G,DV_G", "emp_372|특수화학사업본부|백임원|생산팀|홍성영|G1|DA_SC,PP_G,DOE_SC", "emp_373|특수화학사업본부|백임원|생산팀|안지호|G2|CL_G", "emp_374|특수화학사업본부|백임원|생산팀|배훈하|G1|ML_G,DOE_Y", "emp_375|특수화학사업본부|백임원|생산팀|허우지|G1|DS_G,AU_G", "emp_376|특수화학사업본부|백임원|생산팀|황민연|G3|DA_G,DV_Y,DS_Y", "emp_377|특수화학사업본부|백임원|생산팀|홍은호|G1|TB_Y,AU_Y,DS_GC,PP_GC", "emp_378|특수화학사업본부|백임원|생산팀|김동동|G2|DS_Y,ML_G", "emp_379|바이오소재사업본부|백임원|기획팀|백태승|G2|CL_G,TB_Y,DOE_Y", "emp_380|바이오소재사업본부|백임원|기획팀|최준수|G3|CL_Y,DV_G,PE_Y", "emp_381|바이오소재사업본부|백임원|기획팀|유우현|G2|DA_Y", "emp_382|바이오소재사업본부|백임원|기획팀|안동성|G3|CL_Y", "emp_383|바이오소재사업본부|백임원|기획팀|손은영|G2|TB_B,AU_GC,CL_SC,DV_GC,PE_SC,ML_B", "emp_384|바이오소재사업본부|백임원|기획팀|백동민|G3|AU_Y,ML_Y,DOE_Y", "emp_385|바이오소재사업본부|백임원|기획팀|강호우|G3|TB_Y,PE_Y,PP_Y", "emp_386|바이오소재사업본부|백임원|기획팀|고은도|G3|DS_Y,DV_Y,DA_G", "emp_387|바이오소재사업본부|백임원|기획팀|배은수|G2|TB_G,DOE_Y", "emp_388|바이오소재사업본부|백임원|기획팀|문성아|G3|PE_G", "emp_389|바이오소재사업본부|백임원|기획팀|서성상|G2|ML_G", "emp_390|바이오소재사업본부|백임원|기획팀|허호호|G3|DV_Y", "emp_391|바이오소재사업본부|백임원|기획팀|송호준|G3|TB_G", "emp_392|바이오소재사업본부|백임원|기획팀|송동수|G2|DS_Y,DV_Y", "emp_393|바이오소재사업본부|백임원|기획팀|오동민|G2|DOE_Y", "emp_394|바이오소재사업본부|백임원|기획팀|손재지|G3|PP_G,ML_G,TB_Y", "emp_395|바이오소재사업본부|백임원|기획팀|유동동|G1|ML_Y,AU_Y,PP_Y", "emp_396|바이오소재사업본부|백임원|기획팀|한민재|G1|TB_SC,DA_B,PE_GC,AU_B,DS_Y", "emp_397|바이오소재사업본부|백임원|기획3팀|장민현|G2|TB_G", "emp_398|바이오소재사업본부|백임원|기획3팀|손재민|G1|PE_G", "emp_399|바이오소재사업본부|백임원|기획3팀|송준원|G3|PE_Y", "emp_400|바이오소재사업본부|백임원|기획3팀|정동연|G3|DOE_GC,AU_Y,DA_SC,PP_SC,DS_Y,DV_GC", "emp_401|바이오소재사업본부|백임원|기획3팀|전현영|G2|PE_G,DOE_Y,ML_G", "emp_402|바이오소재사업본부|백임원|기획3팀|홍동하|G2|AU_Y,DA_Y,CL_G", "emp_403|바이오소재사업본부|백임원|기획3팀|조원수|G2|DA_Y,PE_G,TB_G", "emp_404|바이오소재사업본부|백임원|기획3팀|허호수|G2|", "emp_405|바이오소재사업본부|백임원|기획3팀|신정현|G2|", "emp_406|바이오소재사업본부|백임원|기획3팀|조민동|G3|", "emp_407|바이오소재사업본부|백임원|기획3팀|오수연|G1|", "emp_408|바이오소재사업본부|백임원|기획3팀|한현상|G2|", "emp_409|바이오소재사업본부|백임원|기획3팀|이수수|G2|", "emp_410|바이오소재사업본부|백임원|기획3팀|김연재|G3|TB_Y,ML_Y,PE_Y", "emp_411|바이오소재사업본부|백임원|기획3팀|배진혁|G1|DS_G,DA_Y,ML_SC,DOE_SC,DV_Y", "emp_412|바이오소재사업본부|백임원|기획3팀|최영민|G3|ML_Y,DA_B,AU_SC", "emp_413|바이오소재사업본부|백임원|기획3팀|송호진|G2|CL_Y,DA_Y,PP_Y", "emp_414|바이오소재사업본부|백임원|기획3팀|양은수|G2|ML_GC,CL_B,AU_SC,DS_B,DA_Y", "emp_415|바이오소재사업본부|백임원|기술팀|한호민|G3|DOE_G,ML_Y,TB_Y", "emp_416|바이오소재사업본부|백임원|기술팀|강호성|G3|ML_SC,DA_G,CL_G", "emp_417|바이오소재사업본부|백임원|기술팀|이아성|G2|PP_G,ML_Y", "emp_418|바이오소재사업본부|백임원|기술팀|장현지|G1|DV_Y", "emp_419|바이오소재사업본부|백임원|기술팀|허하승|G2|AU_G,DV_Y,TB_Y", "emp_420|바이오소재사업본부|백임원|기술팀|한진수|G2|DA_SC,DS_G,CL_B,ML_G,DV_GC", "emp_421|바이오소재사업본부|백임원|기술팀|이수준|G2|AU_Y,DV_Y,DS_Y", "emp_422|바이오소재사업본부|백임원|기술팀|송훈지|G3|PP_Y,DA_Y", "emp_423|바이오소재사업본부|백임원|기술팀|김현동|G1|ML_Y,DOE_G,PE_G", "emp_424|바이오소재사업본부|백임원|기술팀|고훈호|G1|AU_Y,PE_B,PP_B,DS_GC,DV_SC,ML_SC", "emp_425|바이오소재사업본부|백임원|기술팀|임호성|G2|ML_B,PP_SC,AU_G,TB_G,PE_GC,DOE_GC,DA_Y,DV_Y,CL_G,DS_G", "emp_426|바이오소재사업본부|백임원|기술팀|권민우|G3|TB_Y,ML_G", "emp_427|바이오소재사업본부|백임원|기술팀|조상승|G1|ML_Y", "emp_428|바이오소재사업본부|백임원|기술팀|송호재|G3|DS_G,DOE_G,DA_G", "emp_429|바이오소재사업본부|백임원|기술팀|오하준|G1|PE_Y", "emp_430|바이오소재사업본부|백임원|기술팀|김재하|G3|ML_Y,DA_Y,PP_Y", "emp_431|바이오소재사업본부|백임원|기술팀|최우수|G1|PP_G,AU_G", "emp_432|바이오소재사업본부|백임원|기술팀|안호혁|G3|ML_Y,DA_Y,PE_Y", "emp_433|바이오소재사업본부|백임원|기술3팀|허상민|G1|AU_Y", "emp_434|바이오소재사업본부|백임원|기술3팀|장연수|G3|DA_Y,PP_Y,DOE_Y", "emp_435|바이오소재사업본부|백임원|기술3팀|박수상|G1|TB_G,DOE_Y,CL_Y", "emp_436|바이오소재사업본부|백임원|기술3팀|문상연|G3|ML_G,PP_SC,PE_GC", "emp_437|바이오소재사업본부|백임원|기술3팀|황원현|G2|DS_G,AU_SC,ML_B,TB_SC,PE_SC,DOE_SC,DV_SC,PP_Y,CL_SC", "emp_438|바이오소재사업본부|백임원|기술3팀|고호서|G2|DA_Y,PP_Y", "emp_439|바이오소재사업본부|백임원|기술3팀|배영현|G3|DV_Y", "emp_440|바이오소재사업본부|백임원|기술3팀|조우진|G3|PP_G,DS_SC,DA_Y,CL_Y", "emp_441|바이오소재사업본부|백임원|기술3팀|양현민|G2|AU_Y,DOE_Y", "emp_442|바이오소재사업본부|백임원|기술3팀|류현진|G3|CL_GC,DS_GC,ML_B,DOE_G,DA_Y", "emp_443|바이오소재사업본부|백임원|기술3팀|안수진|G1|TB_G,ML_G", "emp_444|바이오소재사업본부|백임원|기술3팀|최진아|G2|AU_SC,DV_SC,PP_G,TB_SC,PE_SC,DA_G,DOE_Y,CL_G,ML_GC", "emp_445|바이오소재사업본부|백임원|기술3팀|손준준|G3|", "emp_446|바이오소재사업본부|백임원|기술3팀|배성성|G3|", "emp_447|바이오소재사업본부|백임원|기술3팀|서훈훈|G3|", "emp_448|바이오소재사업본부|백임원|기술3팀|문서현|G3|", "emp_449|바이오소재사업본부|백임원|기술3팀|신상정|G2|", "emp_450|바이오소재사업본부|백임원|기술3팀|최상수|G1|", "emp_451|바이오소재사업본부|손임원|회계팀|양민동|G1|PP_G,DOE_Y", "emp_452|바이오소재사업본부|손임원|회계팀|오수태|G3|DOE_Y,DV_Y,DA_Y", "emp_453|바이오소재사업본부|손임원|회계팀|유민지|G1|PE_Y", "emp_454|바이오소재사업본부|손임원|회계팀|권수진|G2|PE_Y", "emp_455|바이오소재사업본부|손임원|회계팀|전호훈|G3|DV_G", "emp_456|바이오소재사업본부|손임원|회계팀|손태동|G2|DS_G,AU_G,PP_Y", "emp_457|바이오소재사업본부|손임원|회계팀|황성진|G2|AU_GC,DV_B,TB_Y,CL_GC,DOE_GC,PP_SC,ML_GC,DS_Y,DA_B,PE_Y", "emp_458|바이오소재사업본부|손임원|회계팀|황동민|G2|AU_Y,PE_G,DS_G", "emp_459|바이오소재사업본부|손임원|회계팀|문재영|G3|DA_Y,TB_Y,DV_Y", "emp_460|바이오소재사업본부|손임원|회계팀|권현승|G2|DA_GC,ML_GC,PE_GC,TB_Y,AU_G,DS_SC", "emp_461|바이오소재사업본부|손임원|회계팀|안정훈|G2|TB_Y,AU_G,PP_Y", "emp_462|바이오소재사업본부|손임원|회계팀|오현상|G2|AU_Y", "emp_463|바이오소재사업본부|손임원|회계팀|장영은|G3|DA_Y,DV_Y,PE_G", "emp_464|바이오소재사업본부|손임원|회계팀|정동훈|G1|DOE_GC,TB_Y,DS_B,DA_GC,AU_Y,DV_GC,CL_SC", "emp_465|바이오소재사업본부|손임원|회계팀|송영태|G3|ML_SC,PP_GC,DOE_SC,TB_G,PE_SC,DA_SC,AU_SC,CL_SC,DV_G", "emp_466|바이오소재사업본부|손임원|회계팀|남상동|G1|DA_Y,PP_Y", "emp_467|바이오소재사업본부|손임원|회계팀|홍민동|G2|PE_G,ML_Y,AU_G", "emp_468|바이오소재사업본부|손임원|회계팀|황승민|G2|DV_SC,AU_Y,CL_Y,PP_B", "emp_469|바이오소재사업본부|손임원|사업팀|신상재|G2|AU_Y,PP_G,TB_G", "emp_470|바이오소재사업본부|손임원|사업팀|윤승승|G1|PP_Y,DA_G", "emp_471|바이오소재사업본부|손임원|사업팀|조현훈|G2|CL_G,DS_G", "emp_472|바이오소재사업본부|손임원|사업팀|오정민|G2|ML_Y,DOE_Y,PE_Y", "emp_473|바이오소재사업본부|손임원|사업팀|손정호|G2|ML_G,DA_Y,DS_Y", "emp_474|바이오소재사업본부|손임원|사업팀|강하승|G1|PP_SC,PE_G,DV_GC", "emp_475|바이오소재사업본부|손임원|사업팀|윤동태|G2|DV_GC,AU_SC,DA_SC,PP_SC,CL_G,TB_Y,DOE_SC,ML_SC", "emp_476|바이오소재사업본부|손임원|사업팀|이우수|G3|DOE_Y,DA_Y,TB_G", "emp_477|바이오소재사업본부|손임원|사업팀|최상호|G3|AU_Y,CL_G,PP_Y", "emp_478|바이오소재사업본부|손임원|사업팀|허승우|G2|ML_SC,PE_G,DA_G,DOE_SC", "emp_479|바이오소재사업본부|손임원|사업팀|송현수|G2|PP_Y,DA_Y", "emp_480|바이오소재사업본부|손임원|사업팀|한수호|G2|PE_G,ML_SC,DA_SC,PP_SC,CL_GC,DV_B,DS_SC,DOE_B,TB_SC,AU_SC", "emp_481|바이오소재사업본부|손임원|사업팀|전동우|G1|CL_Y", "emp_482|바이오소재사업본부|손임원|사업팀|윤진민|G3|DOE_Y", "emp_483|바이오소재사업본부|손임원|사업팀|황훈원|G1|ML_Y,DS_Y,AU_Y", "emp_484|바이오소재사업본부|손임원|사업팀|김민민|G3|DV_G,DS_Y,CL_G", "emp_485|바이오소재사업본부|손임원|사업팀|강성우|G2|PE_Y,DS_G", "emp_486|바이오소재사업본부|손임원|사업팀|강성철|G2|AU_G", "emp_487|바이오소재사업본부|손임원|사업1팀|정성재|G2|DS_G,DV_Y", "emp_488|바이오소재사업본부|손임원|사업1팀|최상영|G2|", "emp_489|바이오소재사업본부|손임원|사업1팀|정준태|G1|", "emp_490|바이오소재사업본부|손임원|사업1팀|신상아|G3|", "emp_491|바이오소재사업본부|손임원|사업1팀|오정호|G3|", "emp_492|바이오소재사업본부|손임원|사업1팀|신우철|G1|DA_GC,CL_G,DS_Y", "emp_493|바이오소재사업본부|손임원|사업1팀|손호재|G2|DV_Y,DA_Y", "emp_494|바이오소재사업본부|손임원|사업1팀|배지호|G2|AU_Y", "emp_495|바이오소재사업본부|손임원|사업1팀|조민아|G1|ML_Y,TB_G,DOE_G", "emp_496|바이오소재사업본부|손임원|사업1팀|강훈진|G3|DS_Y", "emp_497|바이오소재사업본부|손임원|사업1팀|한동현|G2|CL_G,AU_Y", "emp_498|바이오소재사업본부|손임원|사업1팀|권훈지|G1|DA_GC,PP_Y,DOE_G,PE_Y,DV_GC,ML_SC,DS_Y,AU_GC,TB_G", "emp_499|바이오소재사업본부|손임원|사업1팀|허아우|G2|PP_Y", "emp_500|바이오소재사업본부|손임원|사업1팀|손혁훈|G2|DS_Y,DOE_Y,TB_Y", "emp_501|바이오소재사업본부|손임원|사업1팀|류호도|G2|AU_SC,DOE_Y,DS_G,DA_G,DV_B,TB_SC,CL_B,PE_SC,ML_SC", "emp_502|바이오소재사업본부|손임원|사업1팀|권수훈|G3|TB_G,AU_Y,PE_Y", "emp_503|바이오소재사업본부|손임원|사업1팀|문수훈|G2|DS_Y,TB_Y", "emp_504|바이오소재사업본부|손임원|사업1팀|조민승|G2|DV_G,DS_Y", "emp_505|에너지소재사업본부|손임원|품질팀|전은수|G1|AU_Y,ML_Y,PE_Y", "emp_506|에너지소재사업본부|손임원|품질팀|정승도|G3|ML_Y,DV_GC,TB_GC", "emp_507|에너지소재사업본부|손임원|품질팀|정준재|G2|CL_Y,PE_Y,DV_G", "emp_508|에너지소재사업본부|손임원|품질팀|허지동|G3|DS_Y,PE_Y", "emp_509|에너지소재사업본부|손임원|품질팀|백호상|G2|DS_Y", "emp_510|에너지소재사업본부|손임원|품질팀|홍연현|G1|ML_SC,DOE_SC,DA_SC,PE_GC,DS_SC,AU_B,PP_B,DV_SC,CL_B", "emp_511|에너지소재사업본부|손임원|품질팀|장우성|G2|PP_Y,CL_B,DS_G,DA_B,PE_GC", "emp_512|에너지소재사업본부|손임원|품질팀|서수철|G3|DOE_G,TB_Y", "emp_513|에너지소재사업본부|손임원|품질팀|류수수|G1|PE_SC,CL_SC,ML_SC,TB_G,PP_B,DS_SC,AU_G", "emp_514|에너지소재사업본부|손임원|품질팀|홍성수|G3|ML_Y,DA_B,DV_B,DS_SC", "emp_515|에너지소재사업본부|손임원|품질팀|송민원|G1|PP_Y", "emp_516|에너지소재사업본부|손임원|품질팀|박민철|G2|TB_Y,PE_Y", "emp_517|에너지소재사업본부|손임원|품질팀|신동진|G3|DA_Y", "emp_518|에너지소재사업본부|손임원|품질팀|권호정|G3|DV_Y", "emp_519|에너지소재사업본부|손임원|품질팀|홍윤수|G1|DV_Y", "emp_520|에너지소재사업본부|손임원|품질팀|권성우|G3|AU_Y", "emp_521|에너지소재사업본부|손임원|품질팀|윤성하|G1|CL_Y", "emp_522|에너지소재사업본부|손임원|품질팀|권동은|G2|PP_G,DV_Y,DOE_Y", "emp_523|에너지소재사업본부|손임원|인사팀|임태철|G1|TB_Y,CL_Y", "emp_524|에너지소재사업본부|손임원|인사팀|남훈진|G3|", "emp_525|에너지소재사업본부|손임원|인사팀|양현현|G2|", "emp_526|에너지소재사업본부|손임원|인사팀|한도동|G1|", "emp_527|에너지소재사업본부|손임원|인사팀|김상도|G1|", "emp_528|에너지소재사업본부|손임원|인사팀|고수동|G3|", "emp_529|에너지소재사업본부|손임원|인사팀|임진서|G2|", "emp_530|에너지소재사업본부|손임원|인사팀|신민수|G2|", "emp_531|에너지소재사업본부|손임원|인사팀|박연승|G1|", "emp_532|에너지소재사업본부|손임원|인사팀|문상준|G3|", "emp_533|에너지소재사업본부|손임원|인사팀|유호연|G1|DA_B,PP_Y,PE_Y,AU_GC,ML_B", "emp_534|에너지소재사업본부|손임원|인사팀|문상아|G2|PE_G,PP_Y", "emp_535|에너지소재사업본부|손임원|인사팀|류재성|G2|DV_Y,AU_Y", "emp_536|에너지소재사업본부|손임원|인사팀|최진호|G3|DS_Y,DA_Y", "emp_537|에너지소재사업본부|손임원|인사팀|윤민승|G1|PE_B,DA_G,CL_G,TB_GC,AU_GC,PP_Y,DV_G", "emp_538|에너지소재사업본부|손임원|인사팀|신혁동|G2|AU_G", "emp_539|에너지소재사업본부|손임원|인사팀|최현영|G2|DA_Y,TB_Y", "emp_540|에너지소재사업본부|손임원|인사팀|임수준|G1|PP_SC,DV_GC,DA_Y,DOE_G", "emp_541|에너지소재사업본부|전임원|품질5팀|박재현|G1|TB_Y,ML_Y,PE_SC,DOE_G,DS_SC,DV_GC,CL_G,AU_B,DA_GC,PP_SC", "emp_542|에너지소재사업본부|전임원|품질5팀|남재영|G3|PE_G,CL_Y", "emp_543|에너지소재사업본부|전임원|품질5팀|남하민|G1|AU_G,PP_Y", "emp_544|에너지소재사업본부|전임원|품질5팀|백훈민|G1|AU_Y,DS_Y", "emp_545|에너지소재사업본부|전임원|품질5팀|한승영|G1|DV_G,ML_Y", "emp_546|에너지소재사업본부|전임원|품질5팀|윤하동|G2|TB_B,DA_SC,DV_SC,CL_SC,PP_SC,DOE_B,DS_Y,ML_Y,AU_Y", "emp_547|에너지소재사업본부|전임원|품질5팀|임현현|G2|TB_GC,CL_Y,ML_G,AU_G,DOE_Y,DS_Y,DA_GC,DV_G", "emp_548|에너지소재사업본부|전임원|품질5팀|허재훈|G1|DS_G,ML_Y,CL_Y", "emp_549|에너지소재사업본부|전임원|품질5팀|정성훈|G2|DV_Y,AU_G,DS_G", "emp_550|에너지소재사업본부|전임원|품질5팀|오우현|G2|TB_G,ML_G,DOE_Y", "emp_551|에너지소재사업본부|전임원|품질5팀|장수태|G1|ML_G,DS_G", "emp_552|에너지소재사업본부|전임원|품질5팀|허호호|G2|ML_GC,CL_SC,DA_B", "emp_553|에너지소재사업본부|전임원|품질5팀|박민민|G1|DA_G,PE_G", "emp_554|에너지소재사업본부|전임원|품질5팀|강우진|G3|DOE_G,PP_Y,ML_Y", "emp_555|에너지소재사업본부|전임원|품질5팀|유영민|G2|TB_Y,DS_Y", "emp_556|에너지소재사업본부|전임원|품질5팀|안우훈|G2|TB_Y,PE_Y", "emp_557|에너지소재사업본부|전임원|품질5팀|황준도|G2|DA_Y", "emp_558|에너지소재사업본부|전임원|품질5팀|강훈수|G1|AU_G,TB_SC,DA_G", "emp_559|에너지소재사업본부|전임원|지원팀|윤성성|G3|AU_GC,DV_G,DA_GC,ML_Y,PP_Y,DS_Y,TB_G,DOE_G,CL_SC", "emp_560|에너지소재사업본부|전임원|지원팀|김우혁|G1|DS_SC,ML_GC,AU_B", "emp_561|에너지소재사업본부|전임원|지원팀|허호태|G1|CL_Y", "emp_562|에너지소재사업본부|전임원|지원팀|배호현|G1|PP_G", "emp_563|에너지소재사업본부|전임원|지원팀|정민승|G2|ML_Y,PE_G,DS_Y", "emp_564|에너지소재사업본부|전임원|지원팀|허하현|G1|DV_G", "emp_565|에너지소재사업본부|전임원|지원팀|조훈지|G3|", "emp_566|에너지소재사업본부|전임원|지원팀|류수민|G3|", "emp_567|에너지소재사업본부|전임원|지원팀|양우훈|G3|", "emp_568|에너지소재사업본부|전임원|지원팀|손지우|G1|", "emp_569|에너지소재사업본부|전임원|지원팀|송서진|G2|", "emp_570|에너지소재사업본부|전임원|지원팀|배우훈|G3|", "emp_571|에너지소재사업본부|전임원|지원팀|황민호|G3|", "emp_572|에너지소재사업본부|전임원|지원팀|양민수|G2|", "emp_573|에너지소재사업본부|전임원|지원팀|남지준|G3|", "emp_574|에너지소재사업본부|전임원|지원팀|허동진|G1|AU_Y,CL_G,DV_G", "emp_575|에너지소재사업본부|전임원|지원팀|윤승현|G2|DS_Y,PP_Y", "emp_576|에너지소재사업본부|전임원|지원팀|손민승|G1|PE_GC,DV_SC,PP_B,AU_GC,CL_B,DS_SC,DA_SC", "emp_577|에너지소재사업본부|전임원|AX팀|손서승|G2|ML_G", "emp_578|에너지소재사업본부|전임원|AX팀|허정지|G2|DS_G,ML_Y,DA_G", "emp_579|에너지소재사업본부|전임원|AX팀|서진성|G1|DOE_Y,PE_Y,DS_G", "emp_580|에너지소재사업본부|전임원|AX팀|문지하|G2|DV_Y,AU_G,DS_SC,DOE_G", "emp_581|에너지소재사업본부|전임원|AX팀|황서지|G2|ML_Y,CL_Y,TB_Y", "emp_582|에너지소재사업본부|전임원|AX팀|최준상|G1|AU_G,CL_GC,DS_G,DOE_G,PE_SC", "emp_583|에너지소재사업본부|전임원|AX팀|전동정|G1|PP_Y", "emp_584|에너지소재사업본부|전임원|AX팀|강정현|G3|DA_Y,TB_Y,CL_Y", "emp_585|에너지소재사업본부|전임원|AX팀|허훈승|G1|CL_Y,ML_Y,PE_Y", "emp_586|에너지소재사업본부|전임원|AX팀|한호훈|G2|TB_Y,ML_Y", "emp_587|에너지소재사업본부|전임원|AX팀|남준성|G1|DA_Y,CL_Y,TB_Y", "emp_588|에너지소재사업본부|전임원|AX팀|서수현|G2|PP_Y,ML_Y,TB_Y", "emp_589|에너지소재사업본부|전임원|AX팀|안훈재|G1|DA_G,TB_Y,DS_SC,CL_SC,DV_Y", "emp_590|에너지소재사업본부|전임원|AX팀|장진민|G1|PP_G", "emp_591|에너지소재사업본부|전임원|AX팀|안진민|G1|TB_B,CL_SC,ML_Y,AU_Y,PP_GC,DV_Y,PE_SC,DS_SC,DOE_Y,DA_SC", "emp_592|에너지소재사업본부|전임원|AX팀|손수수|G1|DA_SC,CL_SC,ML_SC,DOE_SC,PE_G,PP_B,DS_Y,AU_Y,DV_Y,TB_SC", "emp_593|에너지소재사업본부|전임원|AX팀|김재민|G2|PE_Y,DA_G,CL_Y", "emp_594|에너지소재사업본부|전임원|AX팀|유호민|G2|DA_Y,DOE_GC,PE_SC", "emp_595|에너지소재사업본부|신임원|연구팀|장민호|G1|ML_Y,DOE_SC,DV_G,PP_GC", "emp_596|에너지소재사업본부|신임원|연구팀|박훈성|G2|DS_B,PE_G,AU_GC", "emp_597|에너지소재사업본부|신임원|연구팀|남은상|G3|AU_G,PE_Y,ML_Y", "emp_598|에너지소재사업본부|신임원|연구팀|김동민|G1|TB_Y,DA_G,PP_B,DV_SC,PE_SC", "emp_599|에너지소재사업본부|신임원|연구팀|배훈재|G2|AU_Y,DS_Y,DOE_Y", "emp_600|에너지소재사업본부|신임원|연구팀|최진준|G3|TB_G", "emp_601|에너지소재사업본부|신임원|연구팀|오승민|G2|DS_Y", "emp_602|에너지소재사업본부|신임원|연구팀|신동호|G3|DOE_G", "emp_603|에너지소재사업본부|신임원|연구팀|강태정|G1|", "emp_604|에너지소재사업본부|신임원|연구팀|문동민|G2|", "emp_605|에너지소재사업본부|신임원|연구팀|이진현|G1|", "emp_606|에너지소재사업본부|신임원|연구팀|양지상|G3|", "emp_607|에너지소재사업본부|신임원|연구팀|권진태|G3|", "emp_608|에너지소재사업본부|신임원|연구팀|홍우훈|G2|", "emp_609|에너지소재사업본부|신임원|연구팀|송우태|G2|", "emp_610|에너지소재사업본부|신임원|연구팀|홍준호|G3|", "emp_611|에너지소재사업본부|신임원|연구팀|최아진|G3|", "emp_612|에너지소재사업본부|신임원|연구팀|조민동|G2|", "emp_613|에너지소재사업본부|신임원|연구2팀|허진호|G1|", "emp_614|에너지소재사업본부|신임원|연구2팀|박수수|G2|", "emp_615|에너지소재사업본부|신임원|연구2팀|한정수|G1|CL_G,DA_Y,TB_Y", "emp_616|에너지소재사업본부|신임원|연구2팀|백민호|G2|TB_G,PP_Y", "emp_617|에너지소재사업본부|신임원|연구2팀|문지동|G2|PE_Y,DOE_Y", "emp_618|에너지소재사업본부|신임원|연구2팀|허수진|G2|PE_Y", "emp_619|에너지소재사업본부|신임원|연구2팀|정준준|G2|ML_Y,PP_Y,DS_G", "emp_620|에너지소재사업본부|신임원|연구2팀|문호민|G3|PE_Y,DOE_G", "emp_621|에너지소재사업본부|신임원|연구2팀|손민상|G2|PP_Y", "emp_622|에너지소재사업본부|신임원|연구2팀|양호영|G2|TB_G", "emp_623|에너지소재사업본부|신임원|연구2팀|황승민|G1|CL_Y,DV_G,AU_G", "emp_624|에너지소재사업본부|신임원|연구2팀|손현진|G3|TB_SC,DV_GC,DOE_B,PE_SC,AU_G,ML_SC,PP_SC", "emp_625|에너지소재사업본부|신임원|연구2팀|손혁수|G1|CL_Y", "emp_626|에너지소재사업본부|신임원|연구2팀|백아훈|G1|ML_Y", "emp_627|에너지소재사업본부|신임원|연구2팀|조민지|G3|DOE_Y,CL_Y,PE_G", "emp_628|에너지소재사업본부|신임원|연구2팀|송태동|G2|CL_Y,AU_Y", "emp_629|에너지소재사업본부|신임원|연구2팀|남철동|G2|DOE_GC,ML_GC,DS_G", "emp_630|에너지소재사업본부|신임원|연구2팀|백민윤|G3|DA_Y", "emp_631|중앙연구센터|신임원|생산팀|배진민|G3|DOE_Y", "emp_632|중앙연구센터|신임원|생산팀|황아민|G1|AU_Y,DA_Y,DS_Y", "emp_633|중앙연구센터|신임원|생산팀|최민성|G2|AU_B,DOE_B,DS_G,CL_SC,ML_SC", "emp_634|중앙연구센터|신임원|생산팀|허훈수|G2|TB_G,DOE_G", "emp_635|중앙연구센터|신임원|생산팀|황승우|G3|DS_Y,TB_G", "emp_636|중앙연구센터|신임원|생산팀|정철동|G1|DV_Y,TB_Y", "emp_637|중앙연구센터|신임원|생산팀|권진서|G2|ML_Y,DA_Y,PP_Y", "emp_638|중앙연구센터|신임원|생산팀|홍준민|G1|AU_GC,TB_B,PE_B,ML_G", "emp_639|중앙연구센터|신임원|생산팀|배민은|G2|DV_G,ML_SC,DOE_B,PE_G,DA_G", "emp_640|중앙연구센터|신임원|생산팀|백훈동|G2|CL_Y", "emp_641|중앙연구센터|신임원|생산팀|송도수|G2|PE_G,DS_G,CL_Y", "emp_642|중앙연구센터|신임원|생산팀|강원동|G1|TB_SC,ML_SC,PP_SC,AU_SC,DOE_GC,PE_SC", "emp_643|중앙연구센터|신임원|생산팀|양우동|G3|PP_Y,AU_G,DV_SC,PE_B,DS_SC,CL_B", "emp_644|중앙연구센터|신임원|생산팀|장우준|G2|TB_Y,DA_Y,AU_Y", "emp_645|중앙연구센터|신임원|생산팀|강민성|G1|DV_Y,CL_G,AU_G", "emp_646|중앙연구센터|신임원|생산팀|손민영|G3|PP_SC,TB_SC,CL_SC,AU_GC,DOE_SC,DA_SC", "emp_647|중앙연구센터|신임원|생산팀|김지동|G2|PP_G", "emp_648|중앙연구센터|신임원|생산팀|유은지|G2|", "emp_649|중앙연구센터|신임원|전략팀|오수아|G1|", "emp_650|중앙연구센터|신임원|전략팀|양호훈|G3|", "emp_651|중앙연구센터|신임원|전략팀|백아준|G1|", "emp_652|중앙연구센터|신임원|전략팀|이지성|G1|", "emp_653|중앙연구센터|신임원|전략팀|황성정|G3|", "emp_654|중앙연구센터|신임원|전략팀|유원재|G1|", "emp_655|중앙연구센터|신임원|전략팀|배훈영|G1|", "emp_656|중앙연구센터|신임원|전략팀|허지수|G2|DOE_G", "emp_657|중앙연구센터|신임원|전략팀|오준현|G3|PP_G,ML_Y,PE_Y", "emp_658|중앙연구센터|신임원|전략팀|고지동|G2|ML_Y,CL_Y,AU_Y", "emp_659|중앙연구센터|신임원|전략팀|서준성|G2|PE_Y", "emp_660|중앙연구센터|신임원|전략팀|문동현|G3|DA_SC,TB_GC,CL_G,PE_G,DOE_B", "emp_661|중앙연구센터|신임원|전략팀|신훈성|G3|DS_Y", "emp_662|중앙연구센터|신임원|전략팀|백재민|G1|DV_G,DS_Y", "emp_663|중앙연구센터|신임원|전략팀|허준동|G2|AU_Y,DS_Y", "emp_664|중앙연구센터|신임원|전략팀|유동재|G2|ML_SC,TB_GC,CL_Y,PE_B,DA_B,DS_B,DOE_SC,AU_GC", "emp_665|중앙연구센터|신임원|전략팀|백호동|G2|DV_SC,DOE_B,CL_SC,ML_SC,TB_SC,DS_GC,PP_GC", "emp_666|중앙연구센터|신임원|전략팀|류훈승|G3|DA_SC,PP_Y,ML_B,TB_B,AU_SC", "emp_667|중앙연구센터|유임원|기획팀|유훈지|G2|CL_Y,ML_Y,PP_Y", "emp_668|중앙연구센터|유임원|기획팀|양연지|G3|DV_Y,TB_Y", "emp_669|중앙연구센터|유임원|기획팀|고우승|G1|PE_Y,DS_Y", "emp_670|중앙연구센터|유임원|기획팀|최훈정|G1|AU_G", "emp_671|중앙연구센터|유임원|기획팀|배은훈|G2|DA_Y", "emp_672|중앙연구센터|유임원|기획팀|전정진|G3|CL_Y,PE_Y,TB_Y", "emp_673|중앙연구센터|유임원|기획팀|유진아|G2|PP_G,DS_B,DV_SC,AU_G,DA_G,DOE_SC,TB_SC,CL_G,PE_GC", "emp_674|중앙연구센터|유임원|기획팀|홍준준|G3|AU_Y", "emp_675|중앙연구센터|유임원|기획팀|강지수|G2|AU_SC,PP_B,CL_SC,DS_B", "emp_676|중앙연구센터|유임원|기획팀|안훈수|G3|DA_Y,DS_B,DOE_SC", "emp_677|중앙연구센터|유임원|기획팀|전훈상|G2|DV_Y", "emp_678|중앙연구센터|유임원|기획팀|조훈진|G2|PP_Y", "emp_679|중앙연구센터|유임원|기획팀|류영현|G2|PE_G,AU_G,ML_Y", "emp_680|중앙연구센터|유임원|기획팀|장은진|G3|PP_G,CL_G", "emp_681|중앙연구센터|유임원|기획팀|허민성|G2|AU_G,DA_G,DS_Y", "emp_682|중앙연구센터|유임원|기획팀|윤민진|G2|TB_Y", "emp_683|중앙연구센터|유임원|기획팀|고태상|G1|DA_Y,TB_G,DS_B,DV_SC,PP_Y", "emp_684|중앙연구센터|유임원|기획팀|허현훈|G2|PE_Y", "emp_685|중앙연구센터|유임원|구매팀|백수원|G3|DS_Y", "emp_686|중앙연구센터|유임원|구매팀|박민우|G1|ML_Y,PE_G,DV_G,AU_B,TB_B,CL_SC,DS_SC,DOE_SC", "emp_687|중앙연구센터|유임원|구매팀|오승혁|G1|DA_Y", "emp_688|중앙연구센터|유임원|구매팀|장민정|G2|", "emp_689|중앙연구센터|유임원|구매팀|전우도|G2|", "emp_690|중앙연구센터|유임원|구매팀|고민수|G1|", "emp_691|중앙연구센터|유임원|구매팀|홍우진|G2|", "emp_692|중앙연구센터|유임원|구매팀|이혁은|G2|", "emp_693|중앙연구센터|유임원|구매팀|최수성|G2|", "emp_694|중앙연구센터|유임원|구매팀|남현호|G1|", "emp_695|중앙연구센터|유임원|구매팀|문현연|G2|", "emp_696|중앙연구센터|유임원|구매팀|한정혁|G2|", "emp_697|중앙연구센터|유임원|구매팀|임재동|G2|DA_Y,CL_G", "emp_698|중앙연구센터|유임원|구매팀|강아민|G2|ML_G,DOE_G,TB_Y,PP_SC,PE_G", "emp_699|중앙연구센터|유임원|구매팀|유지수|G3|ML_SC,TB_GC,PE_G,DA_B,CL_SC,DS_GC", "emp_700|중앙연구센터|유임원|구매팀|오성성|G1|DS_G,ML_Y", "emp_701|중앙연구센터|유임원|구매팀|홍수아|G2|ML_Y,DA_Y", "emp_702|중앙연구센터|유임원|구매팀|박수진|G1|TB_G", "emp_703|중앙연구센터|유임원|구매5팀|서혁도|G2|DV_Y,CL_G", "emp_704|중앙연구센터|유임원|구매5팀|남민호|G3|DOE_Y,PP_Y,DS_Y", "emp_705|중앙연구센터|유임원|구매5팀|남윤하|G3|DA_G", "emp_706|중앙연구센터|유임원|구매5팀|황상은|G2|DA_G", "emp_707|중앙연구센터|유임원|구매5팀|권우수|G2|PP_Y", "emp_708|중앙연구센터|유임원|구매5팀|남우성|G2|PE_Y,PP_Y", "emp_709|중앙연구센터|유임원|구매5팀|허준호|G2|AU_Y,PE_G,DV_G", "emp_710|중앙연구센터|유임원|구매5팀|박연준|G2|CL_Y,DV_Y,PE_Y", "emp_711|중앙연구센터|유임원|구매5팀|장민민|G2|CL_Y,DA_G,DOE_Y", "emp_712|중앙연구센터|유임원|구매5팀|송민지|G2|TB_Y,DA_Y", "emp_713|중앙연구센터|유임원|구매5팀|홍현훈|G2|DOE_Y,TB_SC,CL_Y", "emp_714|중앙연구센터|유임원|구매5팀|한동호|G2|DA_Y,DS_GC,DOE_G,ML_SC", "emp_715|중앙연구센터|유임원|구매5팀|신상승|G3|CL_Y,DA_G,PE_Y", "emp_716|중앙연구센터|유임원|구매5팀|고민아|G2|DV_G", "emp_717|중앙연구센터|유임원|구매5팀|백호은|G1|CL_Y,ML_Y,TB_Y", "emp_718|중앙연구센터|유임원|구매5팀|신상혁|G2|DS_Y,DOE_Y", "emp_719|중앙연구센터|유임원|구매5팀|문민호|G2|AU_G,ML_GC,TB_B,DV_SC", "emp_720|중앙연구센터|유임원|구매5팀|신성성|G2|AU_Y,DV_G,DA_Y", "emp_721|중앙연구센터|유임원|기술팀|이민훈|G3|TB_Y,CL_Y,AU_G", "emp_722|중앙연구센터|유임원|기술팀|백성민|G3|TB_G", "emp_723|중앙연구센터|유임원|기술팀|손민정|G3|DS_GC,AU_B,TB_G,PP_SC", "emp_724|중앙연구센터|유임원|기술팀|허영지|G2|CL_SC,PP_G,DV_SC,DA_Y,DS_Y", "emp_725|중앙연구센터|유임원|기술팀|이성지|G3|PE_G,DS_Y", "emp_726|중앙연구센터|유임원|기술팀|배윤민|G2|ML_G,DV_G,DA_B,DS_Y,DOE_GC", "emp_727|중앙연구센터|유임원|기술팀|이지수|G2|ML_G", "emp_728|중앙연구센터|유임원|기술팀|강동준|G3|DA_Y,DOE_Y,TB_Y", "emp_729|중앙연구센터|유임원|기술팀|임태재|G2|DOE_G,PE_G", "emp_730|중앙연구센터|유임원|기술팀|송영태|G2|PP_Y,DOE_G", "emp_731|중앙연구센터|유임원|기술팀|손지수|G3|DA_G,AU_Y,PP_Y", "emp_732|중앙연구센터|유임원|기술팀|안민우|G3|", "emp_733|중앙연구센터|유임원|기술팀|송정서|G3|", "emp_734|중앙연구센터|유임원|기술팀|황현호|G1|", "emp_735|중앙연구센터|유임원|기술팀|강준진|G1|", "emp_736|중앙연구센터|유임원|기술팀|류우영|G1|", "emp_737|중앙연구센터|유임원|기술팀|권민영|G1|", "emp_738|중앙연구센터|유임원|기술팀|안훈도|G1|DS_G", "emp_739|중앙연구센터|유임원|연구팀|양현동|G1|TB_Y,AU_Y,PE_Y", "emp_740|중앙연구센터|유임원|연구팀|허우원|G1|DOE_G", "emp_741|중앙연구센터|유임원|연구팀|고영성|G3|ML_Y,TB_G", "emp_742|중앙연구센터|유임원|연구팀|정호상|G2|TB_Y", "emp_743|중앙연구센터|유임원|연구팀|조우우|G3|CL_Y,PE_G,DA_G", "emp_744|중앙연구센터|유임원|연구팀|류현연|G3|DOE_Y,PP_G,DV_SC,TB_Y", "emp_745|중앙연구센터|유임원|연구팀|임준도|G1|AU_Y,PE_Y,DA_Y", "emp_746|중앙연구센터|유임원|연구팀|손아호|G1|PE_G,DS_G", "emp_747|중앙연구센터|유임원|연구팀|전호상|G3|AU_Y,CL_Y", "emp_748|중앙연구센터|유임원|연구팀|권준성|G3|AU_Y", "emp_749|중앙연구센터|유임원|연구팀|김준수|G1|DS_Y,DV_Y", "emp_750|중앙연구센터|유임원|연구팀|오동하|G3|DOE_Y", "emp_751|중앙연구센터|유임원|연구팀|조우민|G2|ML_Y", "emp_752|중앙연구센터|유임원|연구팀|이훈아|G3|CL_Y", "emp_753|중앙연구센터|유임원|연구팀|송영진|G3|DS_Y,DOE_G,DA_Y", "emp_754|중앙연구센터|유임원|연구팀|황민현|G1|ML_Y,DV_Y", "emp_755|중앙연구센터|유임원|연구팀|고민민|G1|CL_Y,DA_G,PP_G", "emp_756|중앙연구센터|유임원|연구팀|백현준|G2|DOE_G,ML_Y", "emp_757|R&D센터|강임원|지원팀|배상도|G2|PP_Y,ML_G", "emp_758|R&D센터|강임원|지원팀|홍재민|G1|CL_Y,DV_Y,PE_Y", "emp_759|R&D센터|강임원|지원팀|한호혁|G2|DOE_Y,AU_G,PE_Y", "emp_760|R&D센터|강임원|지원팀|한진상|G1|AU_Y,DV_G", "emp_761|R&D센터|강임원|지원팀|박성호|G3|TB_G,DOE_G,PE_G", "emp_762|R&D센터|강임원|지원팀|백태민|G3|DOE_Y,PE_Y", "emp_763|R&D센터|강임원|지원팀|서진현|G1|CL_B,DOE_GC,PP_B,TB_SC,PE_G", "emp_764|R&D센터|강임원|지원팀|송영승|G1|ML_GC,TB_B,DOE_SC", "emp_765|R&D센터|강임원|지원팀|최훈현|G1|DS_Y", "emp_766|R&D센터|강임원|지원팀|문성혁|G1|DS_G,PP_Y,CL_Y", "emp_767|R&D센터|강임원|지원팀|서동수|G3|PP_G,PE_Y", "emp_768|R&D센터|강임원|지원팀|문준훈|G3|DOE_Y", "emp_769|R&D센터|강임원|지원팀|백현민|G2|AU_GC,DA_G,PE_G,DS_B", "emp_770|R&D센터|강임원|지원팀|강혁호|G1|DS_Y,DOE_Y", "emp_771|R&D센터|강임원|지원팀|황호훈|G3|DOE_SC,TB_G,DA_B,CL_Y,DS_GC", "emp_772|R&D센터|강임원|지원팀|홍진성|G2|ML_G", "emp_773|R&D센터|강임원|지원팀|양동현|G2|", "emp_774|R&D센터|강임원|지원팀|오민윤|G1|", "emp_775|R&D센터|강임원|품질팀|윤준수|G2|", "emp_776|R&D센터|강임원|품질팀|임성민|G2|", "emp_777|R&D센터|강임원|품질팀|장재현|G3|", "emp_778|R&D센터|강임원|품질팀|류현민|G2|", "emp_779|R&D센터|강임원|품질팀|권상동|G2|ML_G", "emp_780|R&D센터|강임원|품질팀|장훈아|G3|TB_Y,DS_G", "emp_781|R&D센터|강임원|품질팀|이재진|G2|ML_Y,DS_Y", "emp_782|R&D센터|강임원|품질팀|손진혁|G2|ML_G", "emp_783|R&D센터|강임원|품질팀|안수동|G1|TB_Y,DS_Y,AU_Y", "emp_784|R&D센터|강임원|품질팀|허정수|G2|DS_G,PE_Y", "emp_785|R&D센터|강임원|품질팀|박승훈|G2|AU_G,ML_G,CL_Y", "emp_786|R&D센터|강임원|품질팀|권수철|G3|ML_B,DOE_SC,PP_SC,DS_Y,CL_SC,AU_Y", "emp_787|R&D센터|강임원|품질팀|배호호|G2|DS_SC,AU_B,ML_B,PE_G", "emp_788|R&D센터|강임원|품질팀|남호은|G2|TB_G,PE_Y,ML_Y", "emp_789|R&D센터|강임원|품질팀|서성훈|G1|ML_Y", "emp_790|R&D센터|강임원|품질팀|조상동|G3|DS_G,DV_B,DOE_SC,ML_GC,PE_G,AU_SC,PP_GC,CL_SC,TB_Y,DA_B", "emp_791|R&D센터|강임원|품질팀|임지수|G1|PP_GC,AU_G,DS_SC", "emp_792|R&D센터|강임원|품질팀|황준민|G3|ML_Y,DA_Y", "emp_793|R&D센터|강임원|연구팀|남재호|G2|DV_Y,DS_Y", "emp_794|R&D센터|강임원|연구팀|손진성|G1|PP_Y,DOE_Y", "emp_795|R&D센터|강임원|연구팀|조현지|G2|DOE_G,PP_Y,DA_G", "emp_796|R&D센터|강임원|연구팀|황태원|G1|ML_Y,TB_Y,DA_Y", "emp_797|R&D센터|강임원|연구팀|한승우|G2|AU_B,DV_SC,PP_GC,TB_Y", "emp_798|R&D센터|강임원|연구팀|전민은|G3|PE_G,DOE_Y,DS_Y", "emp_799|R&D센터|강임원|연구팀|고서태|G2|DA_SC,DV_G,TB_Y,AU_Y,ML_Y,PE_SC,DS_B,PP_SC,DOE_GC,CL_Y", "emp_800|R&D센터|강임원|연구팀|양진하|G1|DOE_Y,CL_G", "emp_801|R&D센터|강임원|연구팀|송호호|G3|PP_Y", "emp_802|R&D센터|강임원|연구팀|남민현|G2|DV_Y,PE_Y,DA_Y", "emp_803|R&D센터|강임원|연구팀|한성민|G3|PE_Y,CL_Y,DA_G", "emp_804|R&D센터|강임원|연구팀|한훈민|G3|TB_Y,DS_Y,DA_Y", "emp_805|R&D센터|강임원|연구팀|최현민|G2|PP_Y,DA_GC,DV_B,CL_SC,DOE_B", "emp_806|R&D센터|강임원|연구팀|권승영|G3|AU_Y,DA_Y,CL_G", "emp_807|R&D센터|강임원|연구팀|문준호|G2|DS_Y,CL_Y,ML_Y", "emp_808|R&D센터|강임원|연구팀|오연훈|G1|DOE_Y,CL_G", "emp_809|R&D센터|강임원|연구팀|황동현|G2|CL_Y,ML_Y,DA_G", "emp_810|R&D센터|강임원|연구팀|손민원|G1|DS_GC,DA_SC,TB_SC,DOE_B,CL_Y,DV_GC,PE_B,AU_Y,ML_Y", "emp_811|R&D센터|강임원|AX팀|정훈민|G2|DS_Y", "emp_812|R&D센터|강임원|AX팀|강진우|G3|DOE_Y", "emp_813|R&D센터|강임원|AX팀|손우민|G2|", "emp_814|R&D센터|강임원|AX팀|황영원|G2|", "emp_815|R&D센터|강임원|AX팀|남지하|G1|", "emp_816|R&D센터|강임원|AX팀|정호민|G2|", "emp_817|R&D센터|강임원|AX팀|송동승|G2|", "emp_818|R&D센터|강임원|AX팀|김태진|G3|", "emp_819|R&D센터|강임원|AX팀|최영민|G3|", "emp_820|R&D센터|강임원|AX팀|전성수|G3|DV_Y,TB_Y", "emp_821|R&D센터|강임원|AX팀|한동지|G1|ML_Y,DA_Y", "emp_822|R&D센터|강임원|AX팀|송우태|G3|DOE_GC,DV_Y,TB_G,DS_B,PP_SC,ML_GC,AU_G,CL_Y,PE_B,DA_SC", "emp_823|R&D센터|강임원|AX팀|서수수|G1|DS_G,DA_B,PE_G,CL_SC,ML_GC,AU_GC,DV_Y,TB_Y,DOE_SC,PP_Y", "emp_824|R&D센터|강임원|AX팀|황아동|G3|DOE_G,DS_Y,DV_Y", "emp_825|R&D센터|강임원|AX팀|백동정|G1|PP_G,DA_G,DS_Y", "emp_826|R&D센터|강임원|AX팀|류아아|G2|PP_GC,DA_GC,PE_Y", "emp_827|R&D센터|강임원|AX팀|임우성|G3|AU_Y,CL_Y,PP_Y", "emp_828|R&D센터|강임원|AX팀|임훈훈|G2|PP_Y,DV_Y,DA_G", "emp_829|R&D센터|강임원|관리팀|문우현|G2|PP_Y", "emp_830|R&D센터|강임원|관리팀|임연현|G3|AU_G,CL_G,PP_SC,DOE_G", "emp_831|R&D센터|강임원|관리팀|김민우|G2|PE_Y,TB_G,PP_Y", "emp_832|R&D센터|강임원|관리팀|이은은|G1|ML_Y,CL_Y", "emp_833|R&D센터|강임원|관리팀|한수민|G1|PE_G,DV_Y,CL_Y", "emp_834|R&D센터|강임원|관리팀|김호호|G3|PP_Y", "emp_835|R&D센터|강임원|관리팀|이진은|G2|DV_Y,PP_Y,AU_Y", "emp_836|R&D센터|강임원|관리팀|양우성|G2|CL_GC,DOE_Y,PE_B,AU_B,ML_Y", "emp_837|R&D센터|강임원|관리팀|배진민|G3|DV_Y", "emp_838|R&D센터|강임원|관리팀|유진도|G1|PP_G,DA_G,DS_SC,PE_SC", "emp_839|R&D센터|강임원|관리팀|오현민|G1|ML_B,DOE_Y,TB_GC,DA_B", "emp_840|R&D센터|강임원|관리팀|조영지|G2|DA_Y", "emp_841|R&D센터|강임원|관리팀|백도재|G2|PP_Y,PE_Y,CL_GC,DA_B,TB_Y,ML_SC,DV_Y,DOE_GC,AU_SC,DS_G", "emp_842|R&D센터|강임원|관리팀|전준진|G3|AU_G", "emp_843|R&D센터|강임원|관리팀|류호윤|G1|DOE_Y,CL_Y,ML_G", "emp_844|R&D센터|강임원|관리팀|송우영|G2|AU_G", "emp_845|R&D센터|강임원|관리팀|박동훈|G3|DS_Y,DV_Y,ML_Y", "emp_846|R&D센터|강임원|관리팀|권은재|G2|ML_Y,CL_SC,DV_SC,AU_GC,DOE_Y,DA_Y", "emp_847|R&D센터|손임원|생산팀|한상현|G2|PE_G", "emp_848|R&D센터|손임원|생산팀|백우동|G3|ML_G,DV_Y,PP_Y", "emp_849|R&D센터|손임원|생산팀|박동훈|G2|PP_Y", "emp_850|R&D센터|손임원|생산팀|손재수|G3|DS_G,PP_G,CL_G", "emp_851|R&D센터|손임원|생산팀|김철영|G2|DA_SC,DS_SC,DV_SC,AU_G,ML_B,PE_B,PP_G,DOE_B,TB_B", "emp_852|R&D센터|손임원|생산팀|윤민우|G2|CL_B,DA_Y,PE_Y,TB_GC,DS_G,DV_SC,DOE_G,ML_SC,AU_Y,PP_Y", "emp_853|R&D센터|손임원|생산팀|양수민|G1|TB_Y,ML_G", "emp_854|R&D센터|손임원|생산팀|윤동우|G3|DOE_G,PP_G", "emp_855|R&D센터|손임원|생산팀|황정준|G1|DOE_Y,ML_Y", "emp_856|R&D센터|손임원|생산팀|손동도|G2|AU_G,CL_Y,ML_G", "emp_857|R&D센터|손임원|생산팀|홍성현|G3|", "emp_858|R&D센터|손임원|생산팀|윤준민|G1|", "emp_859|R&D센터|손임원|생산팀|안성우|G2|", "emp_860|R&D센터|손임원|생산팀|윤승정|G3|", "emp_861|R&D센터|손임원|생산팀|권은우|G2|AU_Y,DA_Y", "emp_862|R&D센터|손임원|생산팀|박성아|G2|TB_Y,ML_G,AU_Y", "emp_863|R&D센터|손임원|생산팀|장연정|G3|PE_Y", "emp_864|R&D센터|손임원|생산팀|양호하|G3|DA_Y,PP_Y,CL_Y", "emp_865|R&D센터|손임원|구매팀|남재수|G3|TB_Y,DS_Y,AU_Y", "emp_866|R&D센터|손임원|구매팀|권동윤|G1|CL_G,PE_Y,ML_Y", "emp_867|R&D센터|손임원|구매팀|정승정|G3|DV_SC,PP_SC,DA_SC,DOE_Y,CL_SC,TB_G,PE_Y,DS_SC", "emp_868|R&D센터|손임원|구매팀|안정상|G3|DA_Y,AU_Y", "emp_869|R&D센터|손임원|구매팀|고우서|G3|PP_SC,DV_G,DA_GC,DOE_G,PE_B", "emp_870|R&D센터|손임원|구매팀|안성재|G2|AU_G,DS_Y,TB_G", "emp_871|R&D센터|손임원|구매팀|권민성|G3|CL_Y,DOE_Y,ML_Y", "emp_872|R&D센터|손임원|구매팀|권민영|G2|DS_Y", "emp_873|R&D센터|손임원|구매팀|문민현|G3|PE_SC,ML_B,TB_Y,DOE_SC,CL_G,DS_B,AU_SC,DA_G,DV_SC,PP_B", "emp_874|R&D센터|손임원|구매팀|고하수|G2|DS_Y,DOE_Y", "emp_875|R&D센터|손임원|구매팀|권상민|G1|CL_Y,PE_Y,PP_G", "emp_876|R&D센터|손임원|구매팀|서훈훈|G3|CL_G,ML_G,DV_Y", "emp_877|R&D센터|손임원|구매팀|남수철|G2|AU_Y,PE_Y,DA_Y", "emp_878|R&D센터|손임원|구매팀|정훈민|G2|CL_GC,DA_Y,DV_GC,PE_GC,DS_B,TB_B,ML_Y,PP_G,AU_Y", "emp_879|R&D센터|손임원|구매팀|허호상|G3|DV_Y,DA_Y", "emp_880|R&D센터|손임원|구매팀|정민승|G2|TB_Y,DS_Y", "emp_881|R&D센터|손임원|구매팀|윤민현|G1|DS_G,TB_Y,DV_Y", "emp_882|R&D센터|손임원|구매팀|황성호|G2|DV_Y", "emp_883|DX센터|손임원|회계팀|고재훈|G2|ML_Y,AU_G", "emp_884|DX센터|손임원|회계팀|조승민|G1|CL_G,DS_SC,DA_G", "emp_885|DX센터|손임원|회계팀|황우동|G1|TB_Y", "emp_886|DX센터|손임원|회계팀|류진훈|G2|ML_Y,PE_Y,PP_G", "emp_887|DX센터|손임원|회계팀|고재원|G2|DOE_B,DS_GC,DV_B,PE_G", "emp_888|DX센터|손임원|회계팀|임현민|G3|PP_Y,TB_Y", "emp_889|DX센터|손임원|회계팀|안원영|G3|DS_Y,DOE_G", "emp_890|DX센터|손임원|회계팀|신재수|G3|DS_SC,DA_B,PP_SC,TB_SC,AU_SC,CL_GC", "emp_891|DX센터|손임원|회계팀|강진동|G3|PE_Y,DA_Y,TB_G", "emp_892|DX센터|손임원|회계팀|백태정|G2|ML_Y,TB_G,CL_G", "emp_893|DX센터|손임원|회계팀|문민성|G1|", "emp_894|DX센터|손임원|회계팀|김호태|G3|", "emp_895|DX센터|손임원|회계팀|남수준|G3|", "emp_896|DX센터|손임원|회계팀|정영훈|G2|", "emp_897|DX센터|손임원|회계팀|류현훈|G2|", "emp_898|DX센터|손임원|회계팀|고윤성|G1|", "emp_899|DX센터|손임원|회계팀|조민수|G1|", "emp_900|DX센터|손임원|회계팀|신호수|G1|", "emp_901|DX센터|장임원|생산팀|배훈훈|G3|", "emp_902|DX센터|장임원|생산팀|권성상|G2|DV_Y,CL_B,ML_B,TB_G,DOE_SC", "emp_903|DX센터|장임원|생산팀|이호성|G3|DA_Y", "emp_904|DX센터|장임원|생산팀|허우현|G2|DS_Y,AU_Y,PE_Y", "emp_905|DX센터|장임원|생산팀|송철정|G2|PE_Y,AU_Y,CL_Y", "emp_906|DX센터|장임원|생산팀|허민수|G2|DV_Y", "emp_907|DX센터|장임원|생산팀|최정민|G2|DS_Y,PE_Y", "emp_908|DX센터|장임원|생산팀|유아연|G2|DV_Y,DA_G", "emp_909|DX센터|장임원|생산팀|문수민|G1|DS_SC,ML_Y,PP_G,PE_B", "emp_910|DX센터|장임원|생산팀|송민정|G2|DS_Y", "emp_911|DX센터|장임원|생산팀|손우정|G2|ML_Y,DV_Y,CL_Y", "emp_912|DX센터|장임원|생산팀|고민재|G3|DA_G,DS_GC,DOE_SC", "emp_913|DX센터|장임원|생산팀|전호재|G2|DS_G,DV_G,DA_G", "emp_914|DX센터|장임원|생산팀|김민수|G1|TB_B,DA_Y,DOE_Y,AU_Y,ML_GC,DS_GC,DV_B,PE_GC", "emp_915|DX센터|장임원|생산팀|전상민|G1|DA_G,DOE_Y", "emp_916|DX센터|장임원|생산팀|양상수|G2|PE_G", "emp_917|DX센터|장임원|생산팀|홍우재|G1|PE_Y,CL_Y,DV_Y", "emp_918|DX센터|장임원|생산팀|남수은|G3|DOE_G,CL_Y", "emp_919|DX센터|장임원|생산2팀|김정민|G2|ML_Y,DS_G", "emp_920|DX센터|장임원|생산2팀|박원성|G2|DOE_Y,DA_Y,DS_Y", "emp_921|DX센터|장임원|생산2팀|유재도|G1|TB_Y,ML_Y,CL_Y", "emp_922|DX센터|장임원|생산2팀|류은민|G3|AU_Y,DS_G,PE_Y", "emp_923|DX센터|장임원|생산2팀|손민상|G2|TB_Y", "emp_924|DX센터|장임원|생산2팀|장훈태|G1|CL_Y,PE_G,PP_Y", "emp_925|DX센터|장임원|생산2팀|박승호|G2|DS_Y", "emp_926|DX센터|장임원|생산2팀|조수훈|G3|TB_Y,DA_Y", "emp_927|DX센터|장임원|생산2팀|고진준|G2|CL_Y,ML_G", "emp_928|DX센터|장임원|생산2팀|남훈현|G3|ML_Y,TB_Y,PP_Y", "emp_929|DX센터|장임원|생산2팀|송재성|G3|DA_Y,DOE_G", "emp_930|DX센터|장임원|생산2팀|고현재|G1|DA_Y,PE_Y,AU_Y", "emp_931|DX센터|장임원|생산2팀|양현준|G2|TB_SC,PP_SC,DV_Y", "emp_932|DX센터|장임원|생산2팀|강민호|G1|DV_Y,AU_Y,DA_Y", "emp_933|DX센터|장임원|생산2팀|손민수|G2|AU_Y,DV_G", "emp_934|DX센터|장임원|생산2팀|문수정|G2|DS_Y,PE_G,ML_G", "emp_935|DX센터|장임원|생산2팀|신영수|G2|PE_G,DOE_Y", "emp_936|DX센터|장임원|생산2팀|전민성|G2|DS_Y", "emp_937|DX센터|장임원|지원팀|강수호|G2|PP_Y", "emp_938|DX센터|장임원|지원팀|최수호|G3|", "emp_939|DX센터|장임원|지원팀|박은상|G3|", "emp_940|DX센터|장임원|지원팀|양상성|G3|", "emp_941|DX센터|장임원|지원팀|김민정|G1|", "emp_942|DX센터|장임원|지원팀|홍은철|G3|", "emp_943|DX센터|장임원|지원팀|문승민|G2|AU_G", "emp_944|DX센터|장임원|지원팀|류지재|G2|AU_G,DA_G", "emp_945|DX센터|장임원|지원팀|전철성|G2|TB_Y,PP_Y", "emp_946|DX센터|장임원|지원팀|양수훈|G3|PP_Y,ML_G,PE_Y", "emp_947|DX센터|장임원|지원팀|남민상|G2|PP_Y", "emp_948|DX센터|장임원|지원팀|한민도|G2|DV_GC,CL_Y,PP_G,DA_B,PE_GC", "emp_949|DX센터|장임원|지원팀|장성민|G2|CL_Y,DS_Y,TB_Y", "emp_950|DX센터|장임원|지원팀|고상재|G3|PP_Y,DOE_G,DA_Y", "emp_951|DX센터|장임원|지원팀|남수하|G1|PP_Y,DV_Y", "emp_952|DX센터|장임원|지원팀|백성현|G3|AU_Y,CL_Y", "emp_953|DX센터|장임원|지원팀|정혁훈|G2|CL_Y,ML_Y,PE_G", "emp_954|DX센터|장임원|지원팀|허호민|G1|PP_GC,DV_GC,TB_SC,ML_GC,CL_G,DS_SC,PE_Y,DA_GC,DOE_B,AU_G", "emp_955|DX센터|장임원|기술팀|신하훈|G2|DV_G,PE_Y,DA_B,ML_GC,DS_G", "emp_956|DX센터|장임원|기술팀|유훈우|G1|PE_Y,DOE_Y,ML_Y", "emp_957|DX센터|장임원|기술팀|유훈영|G3|DV_G,CL_Y", "emp_958|DX센터|장임원|기술팀|조재태|G2|CL_Y,ML_G", "emp_959|DX센터|장임원|기술팀|양재민|G1|DA_G,TB_G", "emp_960|DX센터|장임원|기술팀|황우승|G2|DA_Y,ML_Y", "emp_961|DX센터|장임원|기술팀|신연현|G1|PP_B,DOE_Y,CL_B,DV_G,TB_SC,DS_SC,AU_Y", "emp_962|DX센터|장임원|기술팀|강원성|G3|ML_Y", "emp_963|DX센터|장임원|기술팀|이연승|G3|DV_G,DOE_G,DS_G", "emp_964|DX센터|장임원|기술팀|양수동|G2|DV_Y,DOE_Y", "emp_965|DX센터|장임원|기술팀|손호성|G3|DV_G", "emp_966|DX센터|장임원|기술팀|권민진|G1|AU_Y,DV_B,PE_Y,CL_Y,DA_GC", "emp_967|DX센터|장임원|기술팀|안승민|G2|PE_G,DS_Y,DOE_G", "emp_968|DX센터|장임원|기술팀|고재하|G1|DS_Y", "emp_969|DX센터|장임원|기술팀|배현수|G3|AU_G,PE_Y", "emp_970|DX센터|장임원|기술팀|윤수준|G2|CL_SC,PP_Y,AU_GC,DA_SC,ML_G,TB_SC,DOE_SC,PE_G", "emp_971|DX센터|장임원|기술팀|류훈혁|G2|", "emp_972|DX센터|장임원|기술팀|황호우|G2|", "emp_973|DX센터|장임원|AX팀|황하지|G2|", "emp_974|DX센터|장임원|AX팀|권재서|G2|", "emp_975|DX센터|장임원|AX팀|조승민|G2|", "emp_976|DX센터|장임원|AX팀|문영우|G3|", "emp_977|DX센터|장임원|AX팀|홍훈훈|G2|", "emp_978|DX센터|장임원|AX팀|윤재영|G3|", "emp_979|DX센터|장임원|AX팀|장민호|G3|", "emp_980|DX센터|장임원|AX팀|문상우|G3|", "emp_981|DX센터|장임원|AX팀|박수태|G2|", "emp_982|DX센터|장임원|AX팀|박재민|G3|", "emp_983|DX센터|장임원|AX팀|허영철|G3|", "emp_984|DX센터|장임원|AX팀|홍연훈|G2|PE_G,DA_Y,CL_G", "emp_985|DX센터|장임원|AX팀|송성호|G3|DV_Y,ML_Y,CL_Y", "emp_986|DX센터|장임원|AX팀|장영호|G1|TB_G,DOE_Y", "emp_987|DX센터|장임원|AX팀|신철혁|G1|PE_Y", "emp_988|DX센터|장임원|AX팀|한승도|G2|DA_Y,DOE_Y,CL_G", "emp_989|DX센터|장임원|AX팀|남진진|G1|DV_Y,AU_Y,ML_Y", "emp_990|DX센터|장임원|AX팀|안민성|G2|DA_Y,CL_Y,DOE_Y", "emp_991|DX센터|유임원|생산5팀|서진진|G2|DA_SC,DV_SC,PP_GC,AU_GC,ML_GC,PE_B", "emp_992|DX센터|유임원|생산5팀|장정승|G2|DA_Y,TB_G", "emp_993|DX센터|유임원|생산5팀|윤태민|G1|ML_Y,DOE_G,DV_G", "emp_994|DX센터|유임원|생산5팀|서호동|G3|DOE_SC,PE_G,DS_G", "emp_995|DX센터|유임원|생산5팀|류동호|G2|DA_B,DOE_GC,ML_Y,CL_Y,DS_SC,TB_GC,AU_GC,DV_GC", "emp_996|DX센터|유임원|생산5팀|오영성|G3|PE_Y", "emp_997|DX센터|유임원|생산5팀|홍지호|G2|TB_G,ML_Y,PE_Y", "emp_998|DX센터|유임원|생산5팀|남철성|G3|DOE_Y,AU_G", "emp_999|DX센터|유임원|생산5팀|장민성|G1|TB_G,AU_SC,DS_B,CL_B,DOE_GC", "emp_1000|DX센터|유임원|생산5팀|홍수윤|G1|DS_GC,DV_G,DOE_SC,PP_SC,CL_GC,TB_B", "emp_1001|DX센터|유임원|생산5팀|윤현현|G2|DV_G,DOE_Y", "emp_1002|DX센터|유임원|생산5팀|강지훈|G3|DV_Y,PE_G", "emp_1003|DX센터|유임원|생산5팀|백지민|G1|PP_Y,DS_Y", "emp_1004|DX센터|유임원|생산5팀|서수현|G1|DOE_Y,CL_Y", "emp_1005|DX센터|유임원|생산5팀|조성수|G2|AU_Y,CL_Y", "emp_1006|DX센터|유임원|생산5팀|고준재|G1|DS_Y,CL_Y,PE_Y", "emp_1007|DX센터|유임원|생산5팀|홍민수|G3|PP_G,DS_Y", "emp_1008|DX센터|유임원|생산5팀|손동서|G2|ML_G,PE_G", "emp_1009|경영지원센터|유임원|품질팀|오승태|G1|PE_Y,TB_Y", "emp_1010|경영지원센터|유임원|품질팀|유재영|G1|DV_Y,PE_Y", "emp_1011|경영지원센터|유임원|품질팀|고영철|G2|PE_Y,AU_Y,PP_G", "emp_1012|경영지원센터|유임원|품질팀|최상서|G1|DS_SC,DOE_GC,TB_B,PE_G,DV_G,PP_B,DA_G", "emp_1013|경영지원센터|유임원|품질팀|허진하|G1|PP_Y,CL_G,DOE_G", "emp_1014|경영지원센터|유임원|품질팀|고수현|G2|DS_Y", "emp_1015|경영지원센터|유임원|품질팀|정훈재|G3|DOE_Y,AU_Y", "emp_1016|경영지원센터|유임원|품질팀|권재아|G3|AU_Y,DA_Y,DOE_Y", "emp_1017|경영지원센터|유임원|품질팀|조성수|G3|DV_Y", "emp_1018|경영지원센터|유임원|품질팀|신지동|G2|AU_Y,ML_SC,DS_B,DOE_GC,DA_Y", "emp_1019|경영지원센터|유임원|품질팀|강우은|G3|DV_B,AU_SC,DOE_B,PE_B,DA_SC,DS_SC,TB_SC", "emp_1020|경영지원센터|유임원|품질팀|송영훈|G3|", "emp_1021|경영지원센터|유임원|품질팀|문준상|G1|", "emp_1022|경영지원센터|유임원|품질팀|장지동|G3|", "emp_1023|경영지원센터|유임원|품질팀|윤아현|G1|", "emp_1024|경영지원센터|유임원|품질팀|조수상|G1|", "emp_1025|경영지원센터|유임원|품질팀|권수훈|G2|CL_Y,DS_G", "emp_1026|경영지원센터|유임원|품질팀|안재수|G1|CL_Y", "emp_1027|경영지원센터|유임원|생산팀|장정원|G3|DV_Y,DA_Y,DOE_G", "emp_1028|경영지원센터|유임원|생산팀|박수연|G2|DOE_Y,DS_Y,DA_G", "emp_1029|경영지원센터|유임원|생산팀|김재은|G3|PE_G,CL_Y,AU_G", "emp_1030|경영지원센터|유임원|생산팀|최우현|G1|CL_SC,DS_GC,TB_B,AU_GC,PE_B,DA_B", "emp_1031|경영지원센터|유임원|생산팀|정민현|G3|PP_Y,AU_Y,DV_G", "emp_1032|경영지원센터|유임원|생산팀|배우수|G2|DA_Y,PP_GC,PE_Y", "emp_1033|경영지원센터|유임원|생산팀|배우재|G2|TB_G,PE_Y,CL_Y,ML_GC,DOE_G,PP_SC,DA_G,DV_GC,AU_G", "emp_1034|경영지원센터|유임원|생산팀|홍현상|G2|DS_Y,TB_G,PE_G", "emp_1035|경영지원센터|유임원|생산팀|안동민|G2|DV_Y,PE_Y,ML_Y", "emp_1036|경영지원센터|유임원|생산팀|고수현|G2|DOE_Y", "emp_1037|경영지원센터|유임원|생산팀|서민수|G2|DS_Y", "emp_1038|경영지원센터|유임원|생산팀|손수승|G2|AU_B,ML_Y,DOE_Y,CL_SC,TB_GC,DS_SC,PE_SC", "emp_1039|경영지원센터|유임원|생산팀|조수성|G1|ML_Y", "emp_1040|경영지원센터|유임원|생산팀|오준호|G1|TB_G,DA_Y,CL_Y", "emp_1041|경영지원센터|유임원|생산팀|장성재|G3|TB_SC,DOE_G,DV_SC,DA_Y,AU_Y", "emp_1042|경영지원센터|유임원|생산팀|양현우|G1|PE_G,CL_G", "emp_1043|경영지원센터|유임원|생산팀|윤성수|G3|PP_G,AU_Y", "emp_1044|경영지원센터|유임원|생산팀|한은지|G1|DA_G,DS_Y", "emp_1045|경영지원센터|윤임원|구매팀|전우훈|G2|DOE_Y", "emp_1046|경영지원센터|윤임원|구매팀|배도동|G2|CL_Y,DOE_Y,PE_G", "emp_1047|경영지원센터|윤임원|구매팀|장하도|G1|DS_Y,AU_B,PP_SC,CL_SC,TB_SC,DOE_GC,ML_Y,DA_SC,PE_SC", "emp_1048|경영지원센터|윤임원|구매팀|송지승|G1|TB_G", "emp_1049|경영지원센터|윤임원|구매팀|안연호|G1|ML_Y,TB_Y,DS_G", "emp_1050|경영지원센터|윤임원|구매팀|배준진|G1|PP_G,CL_Y,ML_Y", "emp_1051|경영지원센터|윤임원|구매팀|남상진|G1|TB_Y,DS_G", "emp_1052|경영지원센터|윤임원|구매팀|정민우|G3|PP_GC,CL_Y,DS_GC", "emp_1053|경영지원센터|윤임원|구매팀|류수동|G2|DOE_G,ML_G", "emp_1054|경영지원센터|윤임원|구매팀|서현준|G3|", "emp_1055|경영지원센터|윤임원|구매팀|허윤성|G1|", "emp_1056|경영지원센터|윤임원|구매팀|홍수수|G3|", "emp_1057|경영지원센터|윤임원|구매팀|유수태|G1|", "emp_1058|경영지원센터|윤임원|구매팀|허지은|G3|", "emp_1059|경영지원센터|윤임원|구매팀|오재수|G1|", "emp_1060|경영지원센터|윤임원|구매팀|손호민|G2|", "emp_1061|경영지원센터|윤임원|구매팀|고성도|G2|", "emp_1062|경영지원센터|윤임원|구매팀|정혁우|G2|", "emp_1063|경영지원센터|윤임원|사업팀|이민현|G2|", "emp_1064|경영지원센터|윤임원|사업팀|오태현|G3|", "emp_1065|경영지원센터|윤임원|사업팀|최동영|G2|", "emp_1066|경영지원센터|윤임원|사업팀|전정민|G3|AU_Y", "emp_1067|경영지원센터|윤임원|사업팀|안진민|G3|DA_Y", "emp_1068|경영지원센터|윤임원|사업팀|안진지|G1|CL_G", "emp_1069|경영지원센터|윤임원|사업팀|송우우|G1|DA_SC,TB_SC,CL_B,DV_GC,PP_B,DOE_SC", "emp_1070|경영지원센터|윤임원|사업팀|고민훈|G2|DS_Y,AU_SC,DOE_Y,ML_SC,CL_SC,DA_Y,PE_SC", "emp_1071|경영지원센터|윤임원|사업팀|한수성|G2|DS_Y", "emp_1072|경영지원센터|윤임원|사업팀|허현민|G2|TB_G,AU_Y,DA_G", "emp_1073|경영지원센터|윤임원|사업팀|한지승|G1|PP_Y,DOE_G,PE_G", "emp_1074|경영지원센터|윤임원|사업팀|장원민|G3|AU_G,PE_B,CL_B,DS_SC,TB_SC,DA_B,DOE_Y,PP_G,ML_B,DV_GC", "emp_1075|경영지원센터|윤임원|사업팀|강상승|G2|DA_Y,PP_Y", "emp_1076|경영지원센터|윤임원|사업팀|박호혁|G1|PP_Y", "emp_1077|경영지원센터|윤임원|사업팀|백상민|G3|PP_Y,ML_G,TB_Y", "emp_1078|경영지원센터|윤임원|사업팀|한동동|G2|DA_G", "emp_1079|경영지원센터|윤임원|사업팀|신은우|G3|DOE_Y,DS_G,TB_Y", "emp_1080|경영지원센터|윤임원|사업팀|이준승|G2|DV_B,DS_Y,CL_SC,AU_G,PP_B", "emp_1081|경영지원센터|윤임원|전략팀|강재동|G2|DOE_Y,DV_Y,PP_G", "emp_1082|경영지원센터|윤임원|전략팀|오훈훈|G1|PP_G,DS_SC,CL_SC,DV_B,PE_SC,TB_G", "emp_1083|경영지원센터|윤임원|전략팀|양아동|G3|AU_Y", "emp_1084|경영지원센터|윤임원|전략팀|권은우|G3|PE_Y,DOE_Y,AU_Y", "emp_1085|경영지원센터|윤임원|전략팀|허하하|G2|ML_GC,DS_G,DA_Y", "emp_1086|경영지원센터|윤임원|전략팀|남민민|G1|DV_G,PE_Y,TB_G", "emp_1087|경영지원센터|윤임원|전략팀|신진민|G2|DS_Y,DA_Y", "emp_1088|경영지원센터|윤임원|전략팀|허태민|G3|AU_G,DOE_G", "emp_1089|경영지원센터|윤임원|전략팀|윤승재|G3|DV_Y,DS_G", "emp_1090|경영지원센터|윤임원|전략팀|류민우|G1|ML_Y,DA_Y", "emp_1091|경영지원센터|윤임원|전략팀|남호현|G3|CL_Y", "emp_1092|경영지원센터|윤임원|전략팀|강지호|G3|TB_GC,DS_G,DV_SC,PE_B,PP_G", "emp_1093|경영지원센터|윤임원|전략팀|김하승|G1|PE_GC,TB_Y,AU_GC", "emp_1094|경영지원센터|윤임원|전략팀|조정성|G1|DOE_Y,PP_Y", "emp_1095|경영지원센터|윤임원|전략팀|남현원|G2|PP_B,AU_SC,DOE_Y,ML_SC,TB_SC,DS_G,CL_B,DA_G", "emp_1096|경영지원센터|윤임원|전략팀|양수태|G3|DV_Y", "emp_1097|경영지원센터|윤임원|전략팀|김민수|G3|PP_Y,CL_G", "emp_1098|경영지원센터|윤임원|전략팀|전재현|G2|PE_Y,ML_Y,PP_Y", "emp_1099|경영지원센터|윤임원|회계팀|박재성|G1|DOE_Y,AU_Y,CL_Y", "emp_1100|경영지원센터|윤임원|회계팀|안재상|G2|", "emp_1101|경영지원센터|윤임원|회계팀|권호영|G1|", "emp_1102|경영지원센터|윤임원|회계팀|송태준|G3|", "emp_1103|경영지원센터|윤임원|회계팀|송혁진|G2|", "emp_1104|경영지원센터|윤임원|회계팀|권승성|G2|", "emp_1105|경영지원센터|윤임원|회계팀|류현훈|G1|", "emp_1106|경영지원센터|윤임원|회계팀|김은철|G1|", "emp_1107|경영지원센터|윤임원|회계팀|고수서|G1|ML_Y,PP_Y,DOE_Y", "emp_1108|경영지원센터|윤임원|회계팀|배태정|G3|DOE_Y", "emp_1109|경영지원센터|윤임원|회계팀|조호동|G2|DOE_Y", "emp_1110|경영지원센터|윤임원|회계팀|윤진영|G2|DV_Y", "emp_1111|경영지원센터|윤임원|회계팀|손수하|G3|CL_G,DOE_G", "emp_1112|경영지원센터|윤임원|회계팀|조성우|G2|PP_Y,TB_Y", "emp_1113|경영지원센터|윤임원|회계팀|문수상|G2|PE_Y,DA_Y,ML_Y", "emp_1114|경영지원센터|윤임원|회계팀|문성우|G3|PP_Y,DS_G,AU_Y", "emp_1115|경영지원센터|윤임원|회계팀|박동민|G3|TB_G,DS_Y", "emp_1116|경영지원센터|윤임원|회계팀|송민성|G2|DS_GC,DV_Y,CL_B,TB_G", "emp_1117|경영지원센터|손임원|구매2팀|양은민|G1|AU_G,DA_G,TB_G", "emp_1118|경영지원센터|손임원|구매2팀|허재호|G3|DS_G", "emp_1119|경영지원센터|손임원|구매2팀|김재민|G1|TB_Y,ML_Y,DA_Y", "emp_1120|경영지원센터|손임원|구매2팀|양훈영|G2|DA_Y", "emp_1121|경영지원센터|손임원|구매2팀|박지은|G1|PE_Y,PP_Y,DS_Y", "emp_1122|경영지원센터|손임원|구매2팀|장민동|G2|PE_Y,ML_Y,AU_Y", "emp_1123|경영지원센터|손임원|구매2팀|오진은|G1|TB_Y,DA_GC,PP_G,DOE_SC,DV_SC,CL_Y,ML_Y,DS_GC,PE_Y", "emp_1124|경영지원센터|손임원|구매2팀|허재아|G3|CL_B,DV_B,DOE_GC,AU_Y,DA_GC,TB_SC,ML_G,PP_B", "emp_1125|경영지원센터|손임원|구매2팀|배성서|G2|AU_Y,DA_G", "emp_1126|경영지원센터|손임원|구매2팀|손지서|G1|CL_G,PE_Y", "emp_1127|경영지원센터|손임원|구매2팀|고지성|G2|PP_G,PE_Y", "emp_1128|경영지원센터|손임원|구매2팀|신지혁|G2|DOE_Y,ML_Y,PP_Y", "emp_1129|경영지원센터|손임원|구매2팀|정동정|G3|CL_Y,DV_G", "emp_1130|경영지원센터|손임원|구매2팀|최진민|G3|DA_Y,PP_Y", "emp_1131|경영지원센터|손임원|구매2팀|한훈현|G2|PP_GC,PE_Y,DS_B,DA_Y,TB_B", "emp_1132|경영지원센터|손임원|구매2팀|남호호|G2|TB_Y,DS_B,ML_SC,DA_SC,PP_SC,CL_SC", "emp_1133|경영지원센터|손임원|구매2팀|한서지|G2|DOE_Y,ML_B,PP_SC,PE_Y,DS_Y", "emp_1134|경영지원센터|손임원|구매2팀|송상재|G2|DS_G,DV_Y", "emp_1135|품질안전센터|손임원|전략팀|서영호|G3|ML_Y,DS_Y", "emp_1136|품질안전센터|손임원|전략팀|오영원|G3|DS_GC,ML_SC,DA_B,TB_SC,DOE_Y,PP_SC,CL_SC", "emp_1137|품질안전센터|손임원|전략팀|권서민|G1|DOE_G", "emp_1138|품질안전센터|손임원|전략팀|오성호|G1|PE_G", "emp_1139|품질안전센터|손임원|전략팀|서우재|G1|", "emp_1140|품질안전센터|손임원|전략팀|류연영|G2|", "emp_1141|품질안전센터|손임원|전략팀|강정현|G1|", "emp_1142|품질안전센터|손임원|전략팀|이호진|G3|", "emp_1143|품질안전센터|손임원|전략팀|권윤훈|G2|", "emp_1144|품질안전센터|손임원|전략팀|안태호|G1|", "emp_1145|품질안전센터|손임원|전략팀|임지태|G3|", "emp_1146|품질안전센터|손임원|전략팀|황준호|G1|", "emp_1147|품질안전센터|손임원|전략팀|최호동|G1|", "emp_1148|품질안전센터|손임원|전략팀|오준현|G2|DOE_Y,CL_G,AU_Y", "emp_1149|품질안전센터|손임원|전략팀|백훈현|G1|ML_Y,AU_Y,DS_Y", "emp_1150|품질안전센터|손임원|전략팀|고훈민|G3|DOE_G,CL_Y", "emp_1151|품질안전센터|손임원|전략팀|허민우|G1|AU_Y,TB_Y,DOE_G", "emp_1152|품질안전센터|손임원|전략팀|고재하|G2|DS_Y", "emp_1153|품질안전센터|손임원|연구팀|신정우|G1|DA_Y,DOE_Y,AU_Y", "emp_1154|품질안전센터|손임원|연구팀|윤우지|G1|DS_SC,ML_B,PE_Y,DOE_Y", "emp_1155|품질안전센터|손임원|연구팀|김민호|G1|CL_Y,PP_B,DOE_SC,DV_G,TB_GC", "emp_1156|품질안전센터|손임원|연구팀|허수현|G1|CL_SC,ML_B,PP_SC,DS_B,TB_G,PE_SC,DA_SC,DV_B", "emp_1157|품질안전센터|손임원|연구팀|권성훈|G2|PP_G,DV_G,DOE_Y", "emp_1158|품질안전센터|손임원|연구팀|권호준|G2|AU_B,PE_SC,TB_B", "emp_1159|품질안전센터|손임원|연구팀|조동민|G2|DA_G,DOE_G,PE_Y", "emp_1160|품질안전센터|손임원|연구팀|정민철|G3|ML_B,DS_SC,CL_Y,DA_GC", "emp_1161|품질안전센터|손임원|연구팀|오준정|G3|DV_Y", "emp_1162|품질안전센터|손임원|연구팀|배수하|G3|ML_Y,PE_Y,CL_Y", "emp_1163|품질안전센터|손임원|연구팀|류은태|G1|CL_G", "emp_1164|품질안전센터|손임원|연구팀|오우성|G1|CL_GC,DOE_Y,AU_B,ML_Y,DA_Y", "emp_1165|품질안전센터|손임원|연구팀|고민훈|G2|AU_Y,PP_G", "emp_1166|품질안전센터|손임원|연구팀|권현재|G2|TB_SC,DOE_G,PE_B,DA_G,PP_G", "emp_1167|품질안전센터|손임원|연구팀|박성수|G1|DA_B,DS_SC,ML_G,CL_G", "emp_1168|품질안전센터|손임원|연구팀|오민수|G3|DOE_G", "emp_1169|품질안전센터|손임원|연구팀|전은지|G1|DA_Y,DOE_Y", "emp_1170|품질안전센터|손임원|연구팀|배진동|G2|DS_SC,PE_GC,ML_SC,PP_GC,AU_G,CL_Y", "emp_1171|품질안전센터|손임원|기술팀|전재진|G1|DOE_SC,DS_B,CL_Y,AU_GC", "emp_1172|품질안전센터|손임원|기술팀|신재재|G2|AU_Y,PP_Y", "emp_1173|품질안전센터|손임원|기술팀|송하현|G3|TB_Y,ML_G,AU_Y", "emp_1174|품질안전센터|손임원|기술팀|안상현|G3|TB_Y,CL_Y", "emp_1175|품질안전센터|손임원|기술팀|남재우|G2|PP_Y,CL_Y", "emp_1176|품질안전센터|손임원|기술팀|유민동|G2|AU_G,TB_Y,DS_GC,DOE_GC,PE_G,ML_Y", "emp_1177|품질안전센터|손임원|기술팀|홍훈현|G3|DA_Y", "emp_1178|품질안전센터|손임원|기술팀|유민진|G2|TB_Y,CL_Y", "emp_1179|품질안전센터|손임원|기술팀|황우훈|G2|", "emp_1180|품질안전센터|손임원|기술팀|한재아|G1|", "emp_1181|품질안전센터|손임원|기술팀|박준상|G2|", "emp_1182|품질안전센터|손임원|기술팀|황동우|G3|", "emp_1183|품질안전센터|손임원|기술팀|김우훈|G3|", "emp_1184|품질안전센터|손임원|기술팀|정태승|G1|", "emp_1185|품질안전센터|손임원|기술팀|서승훈|G1|", "emp_1186|품질안전센터|손임원|기술팀|허우은|G2|", "emp_1187|품질안전센터|손임원|기술팀|양훈민|G2|", "emp_1188|품질안전센터|손임원|기술팀|서혁혁|G1|", "emp_1189|품질안전센터|손임원|품질팀|임호윤|G2|PP_B,CL_GC,PE_G,DA_B", "emp_1190|품질안전센터|손임원|품질팀|강수재|G3|ML_Y,DOE_Y", "emp_1191|품질안전센터|손임원|품질팀|배정서|G1|DS_Y", "emp_1192|품질안전센터|손임원|품질팀|남아수|G1|DS_Y", "emp_1193|품질안전센터|손임원|품질팀|조성은|G3|DOE_Y,DS_G,DV_Y", "emp_1194|품질안전센터|손임원|품질팀|최진도|G2|PE_G", "emp_1195|품질안전센터|손임원|품질팀|최현훈|G1|TB_G,PP_Y", "emp_1196|품질안전센터|손임원|품질팀|송재성|G2|AU_Y,DS_Y,DOE_Y", "emp_1197|품질안전센터|손임원|품질팀|고호현|G1|PP_G,AU_G,DOE_B,CL_Y,PE_SC", "emp_1198|품질안전센터|손임원|품질팀|임윤아|G1|TB_Y,PE_G,PP_G", "emp_1199|품질안전센터|손임원|품질팀|강훈성|G1|PE_Y,TB_Y,DS_Y", "emp_1200|품질안전센터|손임원|품질팀|류현성|G2|AU_Y,CL_Y,DV_Y", "emp_1201|품질안전센터|손임원|품질팀|최훈동|G2|PE_Y", "emp_1202|품질안전센터|손임원|품질팀|조훈은|G3|DOE_Y,AU_Y,DS_G", "emp_1203|품질안전센터|손임원|품질팀|임재호|G2|ML_G,PP_G", "emp_1204|품질안전센터|손임원|품질팀|강수지|G1|CL_G,DA_G,DV_Y", "emp_1205|품질안전센터|손임원|품질팀|박민호|G1|DA_Y", "emp_1206|품질안전센터|손임원|품질팀|유은혁|G1|DV_GC,DA_Y,CL_G,PP_SC,PE_B", "emp_1207|품질안전센터|손임원|사업팀|문민재|G1|CL_G,DA_G", "emp_1208|품질안전센터|손임원|사업팀|전정동|G3|PE_Y", "emp_1209|품질안전센터|손임원|사업팀|홍승호|G3|PE_G", "emp_1210|품질안전센터|손임원|사업팀|서훈윤|G2|DA_G,DOE_Y", "emp_1211|품질안전센터|손임원|사업팀|백성우|G2|CL_G", "emp_1212|품질안전센터|손임원|사업팀|강훈현|G2|CL_G,PP_Y,TB_Y", "emp_1213|품질안전센터|손임원|사업팀|문윤진|G2|ML_B,DA_Y,TB_SC,PE_B,AU_GC,DOE_Y,DS_SC,PP_B", "emp_1214|품질안전센터|손임원|사업팀|김진민|G3|TB_G,PP_Y", "emp_1215|품질안전센터|손임원|사업팀|서윤우|G1|DS_G", "emp_1216|품질안전센터|손임원|사업팀|이성상|G1|DV_B,CL_Y,TB_B,DOE_Y,PE_GC", "emp_1217|품질안전센터|손임원|사업팀|송우호|G1|PP_Y,AU_Y,DS_Y", "emp_1218|품질안전센터|손임원|사업팀|장민은|G2|DV_Y", "emp_1219|품질안전센터|손임원|사업팀|조호정|G2|DV_G", "emp_1220|품질안전센터|손임원|사업팀|정수승|G1|", "emp_1221|품질안전센터|손임원|사업팀|송호진|G2|", "emp_1222|품질안전센터|손임원|사업팀|최동수|G2|", "emp_1223|품질안전센터|손임원|사업팀|조훈우|G3|", "emp_1224|품질안전센터|손임원|사업팀|신수은|G3|", "emp_1225|품질안전센터|손임원|기획팀|장진지|G1|", "emp_1226|품질안전센터|손임원|기획팀|송훈동|G3|", "emp_1227|품질안전센터|손임원|기획팀|강재우|G2|", "emp_1228|품질안전센터|손임원|기획팀|오현진|G1|", "emp_1229|품질안전센터|손임원|기획팀|고민하|G1|", "emp_1230|품질안전센터|손임원|기획팀|남민준|G2|DOE_Y,DS_G,PE_G", "emp_1231|품질안전센터|손임원|기획팀|류철승|G2|PE_G,TB_G", "emp_1232|품질안전센터|손임원|기획팀|신지지|G3|ML_G,DOE_Y", "emp_1233|품질안전센터|손임원|기획팀|남준동|G2|PE_Y,DOE_Y,CL_G", "emp_1234|품질안전센터|손임원|기획팀|류동동|G2|CL_Y,AU_G", "emp_1235|품질안전센터|손임원|기획팀|문현승|G2|PE_G,DA_Y,DS_G", "emp_1236|품질안전센터|손임원|기획팀|김수민|G2|PE_Y,CL_Y,TB_Y", "emp_1237|품질안전센터|손임원|기획팀|신성호|G3|TB_Y,AU_Y", "emp_1238|품질안전센터|손임원|기획팀|류현하|G1|DA_Y,DS_G,TB_G", "emp_1239|품질안전센터|손임원|기획팀|전아진|G3|AU_Y,CL_G,DA_Y", "emp_1240|품질안전센터|손임원|기획팀|허성승|G2|TB_Y,CL_Y,DV_Y", "emp_1241|품질안전센터|손임원|기획팀|윤성훈|G1|DA_Y,DOE_Y", "emp_1242|품질안전센터|손임원|기획팀|안정혁|G3|PE_G", "emp_1243|품질안전센터|강임원|AX팀|고민수|G2|DOE_GC,AU_GC,PP_Y,CL_G,DA_Y", "emp_1244|품질안전센터|강임원|AX팀|송상민|G3|ML_Y", "emp_1245|품질안전센터|강임원|AX팀|조수재|G1|DV_GC,DOE_GC,AU_Y", "emp_1246|품질안전센터|강임원|AX팀|고지진|G2|DV_Y,CL_G,PP_Y", "emp_1247|품질안전센터|강임원|AX팀|남우민|G3|DS_Y,CL_G", "emp_1248|품질안전센터|강임원|AX팀|양호진|G2|DOE_GC,CL_G,TB_Y,DA_Y", "emp_1249|품질안전센터|강임원|AX팀|서우진|G2|PP_Y,DA_Y", "emp_1250|품질안전센터|강임원|AX팀|배준우|G3|PP_Y,CL_Y,TB_Y", "emp_1251|품질안전센터|강임원|AX팀|고호훈|G2|AU_G,DA_Y", "emp_1252|품질안전센터|강임원|AX팀|정준철|G2|AU_G", "emp_1253|품질안전센터|강임원|AX팀|양민동|G1|DOE_Y", "emp_1254|품질안전센터|강임원|AX팀|남훈준|G3|ML_Y,AU_Y,PE_Y", "emp_1255|품질안전센터|강임원|AX팀|장도상|G1|PE_Y,CL_G", "emp_1256|품질안전센터|강임원|AX팀|남호호|G1|CL_G,AU_G,ML_Y", "emp_1257|품질안전센터|강임원|AX팀|임상진|G2|PE_Y,PP_Y", "emp_1258|품질안전센터|강임원|AX팀|남민철|G1|TB_Y,DV_Y", "emp_1259|품질안전센터|강임원|AX팀|권동영|G1|PP_Y", "emp_1260|품질안전센터|강임원|AX팀|안진민|G1|ML_Y", "emp_1261|생산기술센터|강임원|지원팀|손지상|G3|PP_SC,AU_SC,DV_SC,PE_Y,CL_GC,DA_Y", "emp_1262|생산기술센터|강임원|지원팀|한윤수|G1|", "emp_1263|생산기술센터|강임원|지원팀|임승정|G1|", "emp_1264|생산기술센터|강임원|지원팀|장호승|G3|", "emp_1265|생산기술센터|강임원|지원팀|신진동|G1|", "emp_1266|생산기술센터|강임원|지원팀|권동현|G2|", "emp_1267|생산기술센터|강임원|지원팀|이하재|G3|", "emp_1268|생산기술센터|강임원|지원팀|손호태|G1|", "emp_1269|생산기술센터|강임원|지원팀|권민은|G1|", "emp_1270|생산기술센터|강임원|지원팀|정진민|G2|", "emp_1271|생산기술센터|강임원|지원팀|박승철|G1|ML_Y,DA_Y", "emp_1272|생산기술센터|강임원|지원팀|조하우|G1|CL_G,DOE_SC,ML_GC,PP_GC,DV_Y,PE_Y,DA_SC,AU_GC,DS_G", "emp_1273|생산기술센터|강임원|지원팀|최진성|G2|PE_Y", "emp_1274|생산기술센터|강임원|지원팀|고수도|G2|DV_G,CL_Y", "emp_1275|생산기술센터|강임원|지원팀|임성상|G1|CL_GC,AU_SC,DA_SC,PE_B,DS_SC,ML_GC", "emp_1276|생산기술센터|강임원|지원팀|황정태|G1|DOE_Y", "emp_1277|생산기술센터|강임원|지원팀|윤우훈|G2|DA_Y", "emp_1278|생산기술센터|강임원|지원팀|송수준|G3|DA_GC,TB_GC,ML_G,DS_SC,DOE_SC,AU_Y", "emp_1279|생산기술센터|강임원|사업팀|송수민|G3|ML_Y", "emp_1280|생산기술센터|강임원|사업팀|유민은|G2|PE_SC,PP_Y,DA_SC,DOE_Y", "emp_1281|생산기술센터|강임원|사업팀|양아호|G2|TB_Y", "emp_1282|생산기술센터|강임원|사업팀|신현민|G1|CL_G,DOE_Y,DS_G,DV_SC", "emp_1283|생산기술센터|강임원|사업팀|한훈승|G3|PP_SC,ML_G,AU_GC,DA_GC,DS_SC,PE_G,CL_SC", "emp_1284|생산기술센터|강임원|사업팀|최진재|G3|DOE_B,PP_G,TB_Y,CL_GC,DS_B", "emp_1285|생산기술센터|강임원|사업팀|안현성|G2|DA_Y,TB_G,DS_G", "emp_1286|생산기술센터|강임원|사업팀|고우영|G3|DOE_Y,AU_GC,ML_Y,DS_G", "emp_1287|생산기술센터|강임원|사업팀|강호도|G3|TB_Y,AU_Y,DS_Y", "emp_1288|생산기술센터|강임원|사업팀|임현수|G3|DOE_Y,DV_Y", "emp_1289|생산기술센터|강임원|사업팀|정민은|G1|PP_G,DA_GC,TB_SC,DV_SC,DOE_G,CL_G,PE_GC", "emp_1290|생산기술센터|강임원|사업팀|전동현|G1|PE_G,PP_Y,DV_Y", "emp_1291|생산기술센터|강임원|사업팀|최연훈|G3|DA_Y", "emp_1292|생산기술센터|강임원|사업팀|오우호|G3|TB_Y,DOE_Y,DA_Y,AU_B,PP_SC,DS_SC,DV_Y", "emp_1293|생산기술센터|강임원|사업팀|문동우|G2|CL_Y,DA_Y", "emp_1294|생산기술센터|강임원|사업팀|오수동|G3|ML_Y,TB_Y,DOE_Y", "emp_1295|생산기술센터|강임원|사업팀|정호현|G1|DA_G,TB_G,PP_Y", "emp_1296|생산기술센터|강임원|사업팀|조민재|G2|DV_G,TB_SC,DS_B", "emp_1297|생산기술센터|장임원|회계팀|오수훈|G2|DA_G,CL_G,DS_Y", "emp_1298|생산기술센터|장임원|회계팀|전호수|G1|DOE_Y", "emp_1299|생산기술센터|장임원|회계팀|류현훈|G2|DOE_G,ML_G", "emp_1300|생산기술센터|장임원|회계팀|백영성|G2|PP_Y,ML_Y", "emp_1301|생산기술센터|장임원|회계팀|허지재|G2|DS_Y", "emp_1302|생산기술센터|장임원|회계팀|김혁수|G2|CL_Y", "emp_1303|생산기술센터|장임원|회계팀|유연우|G2|TB_Y,AU_Y,PE_G", "emp_1304|생산기술센터|장임원|회계팀|조우상|G1|PE_Y", "emp_1305|생산기술센터|장임원|회계팀|손진진|G3|DOE_Y,AU_G,PE_Y", "emp_1306|생산기술센터|장임원|회계팀|김준호|G3|", "emp_1307|생산기술센터|장임원|회계팀|류동호|G1|", "emp_1308|생산기술센터|장임원|회계팀|안민태|G1|", "emp_1309|생산기술센터|장임원|회계팀|오훈훈|G2|", "emp_1310|생산기술센터|장임원|회계팀|고진성|G3|", "emp_1311|생산기술센터|장임원|회계팀|남민민|G2|", "emp_1312|생산기술센터|장임원|회계팀|홍훈현|G3|DA_Y,TB_Y,PP_Y", "emp_1313|생산기술센터|장임원|회계팀|최승수|G2|TB_SC,CL_G,ML_B,PP_GC,DA_GC,DV_G", "emp_1314|생산기술센터|장임원|회계팀|최하동|G1|TB_Y,ML_Y", "emp_1315|생산기술센터|장임원|지원4팀|장영수|G1|PE_Y,CL_Y,AU_Y", "emp_1316|생산기술센터|장임원|지원4팀|한성준|G1|TB_Y", "emp_1317|생산기술센터|장임원|지원4팀|안재민|G3|CL_Y,AU_GC,DV_B,PP_SC,ML_Y", "emp_1318|생산기술센터|장임원|지원4팀|안동성|G2|DA_G,CL_GC,DV_B,AU_G,TB_G", "emp_1319|생산기술센터|장임원|지원4팀|송상상|G3|DS_Y,PE_Y,ML_Y", "emp_1320|생산기술센터|장임원|지원4팀|백준혁|G2|DOE_G,TB_G", "emp_1321|생산기술센터|장임원|지원4팀|장훈영|G2|DA_G", "emp_1322|생산기술센터|장임원|지원4팀|박승정|G2|PP_G,TB_Y,ML_Y", "emp_1323|생산기술센터|장임원|지원4팀|문우진|G2|TB_G,DV_G", "emp_1324|생산기술센터|장임원|지원4팀|김현진|G2|CL_SC,DS_GC,DOE_B,ML_B,PE_Y", "emp_1325|생산기술센터|장임원|지원4팀|윤재우|G2|PP_GC,ML_G,TB_B", "emp_1326|생산기술센터|장임원|지원4팀|유재민|G1|AU_Y", "emp_1327|생산기술센터|장임원|지원4팀|조상현|G3|PE_SC,AU_B,DOE_GC,TB_SC,DS_SC,DA_SC,PP_Y", "emp_1328|생산기술센터|장임원|지원4팀|김영호|G1|ML_G", "emp_1329|생산기술센터|장임원|지원4팀|고도서|G2|DV_Y,CL_Y", "emp_1330|생산기술센터|장임원|지원4팀|한하연|G3|DS_G,DOE_G,CL_G", "emp_1331|생산기술센터|장임원|지원4팀|정훈수|G3|PP_Y", "emp_1332|생산기술센터|장임원|지원4팀|박현윤|G2|DV_Y", "emp_1333|생산기술센터|장임원|사업3팀|고상동|G2|CL_G", "emp_1334|생산기술센터|장임원|사업3팀|허하성|G1|CL_Y", "emp_1335|생산기술센터|장임원|사업3팀|오승우|G1|DOE_Y", "emp_1336|생산기술센터|장임원|사업3팀|전진은|G2|TB_G,AU_G", "emp_1337|생산기술센터|장임원|사업3팀|양정성|G1|PP_Y,DA_Y,PE_Y", "emp_1338|생산기술센터|장임원|사업3팀|남승재|G2|CL_G", "emp_1339|생산기술센터|장임원|사업3팀|양재민|G2|DA_Y", "emp_1340|생산기술센터|장임원|사업3팀|정동현|G1|CL_Y,PE_G,AU_G", "emp_1341|생산기술센터|장임원|사업3팀|문수현|G2|AU_Y,DOE_G", "emp_1342|생산기술센터|장임원|사업3팀|박재호|G3|ML_G,DOE_G", "emp_1343|생산기술센터|장임원|사업3팀|류영은|G3|DA_G", "emp_1344|생산기술센터|장임원|사업3팀|손상영|G2|DV_Y,CL_Y,DS_Y", "emp_1345|생산기술센터|장임원|사업3팀|윤성진|G1|", "emp_1346|생산기술센터|장임원|사업3팀|남동준|G2|", "emp_1347|생산기술센터|장임원|사업3팀|안상호|G3|", "emp_1348|생산기술센터|장임원|사업3팀|신우우|G1|", "emp_1349|생산기술센터|장임원|사업3팀|임상상|G2|", "emp_1350|생산기술센터|장임원|사업3팀|송훈정|G1|", "emp_1351|생산기술센터|장임원|기술팀|오준훈|G1|", "emp_1352|생산기술센터|장임원|기술팀|남동현|G2|", "emp_1353|생산기술센터|장임원|기술팀|송진민|G3|PE_Y", "emp_1354|생산기술센터|장임원|기술팀|유영민|G2|DV_G,CL_G", "emp_1355|생산기술센터|장임원|기술팀|한아현|G2|PP_SC,AU_Y,DA_G,ML_G,TB_G,DV_SC,PE_SC,DOE_SC,DS_GC", "emp_1356|생산기술센터|장임원|기술팀|최동현|G2|DA_G", "emp_1357|생산기술센터|장임원|기술팀|홍승정|G1|ML_Y,DOE_Y", "emp_1358|생산기술센터|장임원|기술팀|고우상|G1|DOE_G", "emp_1359|생산기술센터|장임원|기술팀|최민하|G3|DV_G,AU_Y,TB_Y", "emp_1360|생산기술센터|장임원|기술팀|조동성|G1|DS_Y,DOE_G,DA_Y", "emp_1361|생산기술센터|장임원|기술팀|류수현|G2|ML_G,AU_G", "emp_1362|생산기술센터|장임원|기술팀|김성민|G2|AU_Y,DOE_Y", "emp_1363|생산기술센터|장임원|기술팀|류하현|G2|AU_Y,TB_Y,ML_Y", "emp_1364|생산기술센터|장임원|기술팀|강동수|G1|DA_G,PE_G,PP_Y", "emp_1365|생산기술센터|장임원|기술팀|윤은훈|G3|TB_Y,DV_Y", "emp_1366|생산기술센터|장임원|기술팀|윤준성|G1|PE_G,AU_GC,TB_GC,DA_G,PP_SC,DOE_Y", "emp_1367|생산기술센터|장임원|기술팀|배진윤|G3|DS_SC,DA_SC,CL_GC,PE_SC,DOE_GC,AU_GC", "emp_1368|생산기술센터|장임원|기술팀|안성재|G3|ML_Y", "emp_1369|전략기획센터|장임원|인사팀|윤동준|G1|DV_Y,PE_Y", "emp_1370|전략기획센터|장임원|인사팀|신윤훈|G3|PP_Y", "emp_1371|전략기획센터|장임원|인사팀|홍도민|G2|PP_Y", "emp_1372|전략기획센터|장임원|인사팀|신도서|G3|PP_Y,DV_Y", "emp_1373|전략기획센터|장임원|인사팀|한아지|G1|TB_G,CL_SC,PP_SC", "emp_1374|전략기획센터|장임원|인사팀|김성훈|G2|DOE_Y,PE_Y,PP_Y", "emp_1375|전략기획센터|장임원|인사팀|손민수|G1|AU_Y,DS_Y,PP_G", "emp_1376|전략기획센터|장임원|인사팀|서상재|G1|CL_B,DS_G,DOE_Y,PP_SC,TB_SC,DV_G,PE_B,DA_SC", "emp_1377|전략기획센터|장임원|인사팀|전수민|G2|AU_G,CL_GC,PE_G,TB_SC,DA_B,DS_Y,PP_B,ML_SC,DV_Y", "emp_1378|전략기획센터|장임원|인사팀|송서수|G3|CL_Y,DV_Y,DS_Y", "emp_1379|전략기획센터|장임원|인사팀|신지민|G3|DV_G", "emp_1380|전략기획센터|장임원|인사팀|황수수|G2|PP_Y", "emp_1381|전략기획센터|장임원|인사팀|이호은|G3|DA_G", "emp_1382|전략기획센터|장임원|인사팀|김서아|G2|DA_Y,TB_Y,AU_Y", "emp_1383|전략기획센터|장임원|인사팀|고호재|G2|AU_G,DA_Y", "emp_1384|전략기획센터|장임원|인사팀|전우민|G2|DOE_G,ML_Y,AU_G", "emp_1385|전략기획센터|장임원|인사팀|황윤현|G3|CL_Y,AU_Y,PE_Y", "emp_1386|전략기획센터|장임원|인사팀|박동도|G1|", "emp_1387|전략기획센터|김임원|구매팀|오수철|G3|", "emp_1388|전략기획센터|김임원|구매팀|강상민|G1|", "emp_1389|전략기획센터|김임원|구매팀|신준상|G2|", "emp_1390|전략기획센터|김임원|구매팀|이동진|G2|", "emp_1391|전략기획센터|김임원|구매팀|손수수|G1|", "emp_1392|전략기획센터|김임원|구매팀|유윤성|G2|", "emp_1393|전략기획센터|김임원|구매팀|윤도지|G3|", "emp_1394|전략기획센터|김임원|구매팀|신민연|G2|ML_Y,DS_Y", "emp_1395|전략기획센터|김임원|구매팀|장민훈|G1|PE_Y,TB_Y", "emp_1396|전략기획센터|김임원|구매팀|황호우|G3|DV_G,DS_Y", "emp_1397|전략기획센터|김임원|구매팀|허준도|G2|DOE_Y", "emp_1398|전략기획센터|김임원|구매팀|안태민|G1|DV_Y,DS_Y,PP_G", "emp_1399|전략기획센터|김임원|구매팀|김성동|G1|PE_Y,DA_G,DV_Y", "emp_1400|전략기획센터|김임원|구매팀|조훈준|G1|AU_Y,DV_G", "emp_1401|전략기획센터|김임원|구매팀|윤민재|G3|DV_Y,TB_G,CL_Y", "emp_1402|전략기획센터|김임원|구매팀|안수수|G2|PE_SC,ML_G,DS_SC", "emp_1403|전략기획센터|김임원|구매팀|송동현|G1|DOE_Y,DV_Y", "emp_1404|전략기획센터|김임원|구매팀|안수훈|G2|DOE_Y,PE_G", "emp_1405|전략기획센터|김임원|기술팀|허도민|G2|DV_GC,DOE_GC,DA_B,CL_B", "emp_1406|전략기획센터|김임원|기술팀|임민도|G1|DOE_Y,AU_Y", "emp_1407|전략기획센터|김임원|기술팀|최진민|G1|DV_SC,AU_G,PE_G", "emp_1408|전략기획센터|김임원|기술팀|최호진|G1|AU_G,DA_Y", "emp_1409|전략기획센터|김임원|기술팀|홍서혁|G3|DA_Y,PE_Y", "emp_1410|전략기획센터|김임원|기술팀|남수현|G3|DS_Y,DA_Y", "emp_1411|전략기획센터|김임원|기술팀|장현동|G3|DV_G,DOE_Y", "emp_1412|전략기획센터|김임원|기술팀|오동태|G2|DS_Y", "emp_1413|전략기획센터|김임원|기술팀|안태우|G1|PE_Y,DA_Y", "emp_1414|전략기획센터|김임원|기술팀|오지우|G1|PP_Y,DV_Y,DS_Y", "emp_1415|전략기획센터|김임원|기술팀|유진아|G3|DV_Y", "emp_1416|전략기획센터|김임원|기술팀|홍윤재|G2|CL_SC,DOE_Y,DS_GC,PP_Y,DV_B", "emp_1417|전략기획센터|김임원|기술팀|강영민|G2|DV_Y", "emp_1418|전략기획센터|김임원|기술팀|문성동|G1|CL_Y,TB_Y,DV_Y", "emp_1419|전략기획센터|김임원|기술팀|허성수|G3|AU_G,DS_G,DOE_Y", "emp_1420|전략기획센터|김임원|기술팀|정태준|G2|DA_G,CL_Y", "emp_1421|전략기획센터|김임원|기술팀|안동원|G3|TB_Y,ML_Y,AU_G", "emp_1422|전략기획센터|김임원|기술팀|신영현|G2|DV_GC,DA_Y,DS_G,DOE_B,PP_GC,CL_Y,TB_SC,PE_Y,AU_SC", "emp_1423|전략기획센터|김임원|회계팀|허호진|G2|PP_Y", "emp_1424|전략기획센터|김임원|회계팀|김호태|G3|PE_G,CL_Y,PP_Y", "emp_1425|전략기획센터|김임원|회계팀|이재수|G2|DV_G", "emp_1426|전략기획센터|김임원|회계팀|백재재|G2|TB_Y,CL_G,ML_G", "emp_1427|전략기획센터|김임원|회계팀|허재훈|G3|", "emp_1428|전략기획센터|김임원|회계팀|안민정|G1|", "emp_1429|전략기획센터|김임원|회계팀|전민수|G2|", "emp_1430|전략기획센터|김임원|회계팀|유민태|G2|", "emp_1431|전략기획센터|김임원|회계팀|최상훈|G2|", "emp_1432|전략기획센터|김임원|회계팀|신우준|G1|", "emp_1433|전략기획센터|김임원|회계팀|정성준|G2|", "emp_1434|전략기획센터|김임원|회계팀|장민호|G3|", "emp_1435|전략기획센터|김임원|회계팀|양은재|G2|AU_G", "emp_1436|전략기획센터|김임원|회계팀|송승우|G1|DV_Y,PE_G", "emp_1437|전략기획센터|김임원|회계팀|남진수|G1|AU_Y", "emp_1438|전략기획센터|김임원|회계팀|윤승민|G2|DV_SC,ML_GC,AU_B,DA_SC,DOE_SC,PP_GC,DS_B", "emp_1439|전략기획센터|김임원|회계팀|남호호|G1|DS_Y", "emp_1440|전략기획센터|김임원|회계팀|강상민|G3|DV_SC,DA_GC,CL_Y,PP_GC,TB_SC,DS_Y", "emp_1441|전략기획센터|김임원|기술2팀|윤호정|G2|ML_SC,DV_G,TB_B", "emp_1442|전략기획센터|김임원|기술2팀|최훈진|G1|ML_SC,AU_Y,DS_G,DV_SC,CL_SC,DOE_G,PP_G,TB_G,DA_B,PE_SC", "emp_1443|전략기획센터|김임원|기술2팀|이우진|G1|DV_Y", "emp_1444|전략기획센터|김임원|기술2팀|임성호|G3|PP_Y", "emp_1445|전략기획센터|김임원|기술2팀|권아준|G1|DA_Y,DV_G,DOE_Y", "emp_1446|전략기획센터|김임원|기술2팀|조서현|G2|PE_Y,PP_Y", "emp_1447|전략기획센터|김임원|기술2팀|양호수|G3|PP_SC,ML_GC,TB_G", "emp_1448|전략기획센터|김임원|기술2팀|권은우|G2|PE_Y,TB_G", "emp_1449|전략기획센터|김임원|기술2팀|조정동|G3|DA_GC,DV_SC,PP_SC,ML_Y,TB_B,AU_SC", "emp_1450|전략기획센터|김임원|기술2팀|백동수|G2|PE_Y,DV_Y", "emp_1451|전략기획센터|김임원|기술2팀|오민호|G3|DV_Y,DS_Y", "emp_1452|전략기획센터|김임원|기술2팀|홍민상|G3|PE_Y,AU_Y", "emp_1453|전략기획센터|김임원|기술2팀|손철현|G1|DV_Y", "emp_1454|전략기획센터|김임원|기술2팀|한도진|G2|CL_Y,PP_G,DOE_G", "emp_1455|전략기획센터|김임원|기술2팀|임영정|G1|DA_G,ML_Y,PP_G", "emp_1456|전략기획센터|김임원|기술2팀|조철진|G1|PE_Y", "emp_1457|전략기획센터|김임원|기술2팀|이훈진|G3|CL_Y,TB_G", "emp_1458|전략기획센터|김임원|기술2팀|권은윤|G1|DA_Y,DV_G,AU_Y", "emp_1459|전략기획센터|강임원|생산팀|신진현|G1|PP_Y", "emp_1460|전략기획센터|강임원|생산팀|홍영도|G2|ML_G,DOE_Y", "emp_1461|전략기획센터|강임원|생산팀|배철민|G3|DA_Y", "emp_1462|전략기획센터|강임원|생산팀|손준성|G3|DOE_Y,PE_Y,DA_G", "emp_1463|전략기획센터|강임원|생산팀|한진승|G2|TB_Y,DA_Y", "emp_1464|전략기획센터|강임원|생산팀|한훈훈|G3|ML_Y,DS_Y,DOE_Y", "emp_1465|전략기획센터|강임원|생산팀|양현민|G2|ML_G,TB_Y", "emp_1466|전략기획센터|강임원|생산팀|윤민서|G1|TB_Y,DV_Y,DS_Y", "emp_1467|전략기획센터|강임원|생산팀|신승호|G1|PP_GC,TB_B,DOE_G,ML_SC,PE_G", "emp_1468|전략기획센터|강임원|생산팀|고태연|G3|PP_Y,DV_G,DOE_Y", "emp_1469|전략기획센터|강임원|생산팀|백현원|G1|", "emp_1470|전략기획센터|강임원|생산팀|정우현|G1|", "emp_1471|전략기획센터|강임원|생산팀|정수성|G2|", "emp_1472|전략기획센터|강임원|생산팀|강훈정|G1|", "emp_1473|전략기획센터|강임원|생산팀|김성우|G3|", "emp_1474|전략기획센터|강임원|생산팀|윤준정|G3|", "emp_1475|전략기획센터|강임원|생산팀|서재상|G3|", "emp_1476|전략기획센터|강임원|생산팀|조상정|G1|PP_Y,CL_Y,DS_Y", "emp_1477|글로벌사업센터|강임원|기술팀|장승동|G2|DS_B,CL_GC,PP_GC", "emp_1478|글로벌사업센터|강임원|기술팀|서연호|G2|DS_SC,PP_GC,ML_Y,DOE_SC,DV_G,DA_SC,AU_SC,TB_Y,PE_Y,CL_Y", "emp_1479|글로벌사업센터|강임원|기술팀|전수성|G2|PP_Y", "emp_1480|글로벌사업센터|강임원|기술팀|정원동|G2|DA_Y,DOE_Y,CL_Y", "emp_1481|글로벌사업센터|강임원|기술팀|홍성태|G3|DV_B,DOE_GC,DS_G,ML_GC,AU_SC,PE_SC,DA_SC", "emp_1482|글로벌사업센터|강임원|기술팀|서민준|G1|ML_Y,PP_G", "emp_1483|글로벌사업센터|강임원|기술팀|허태재|G1|PP_Y", "emp_1484|글로벌사업센터|강임원|기술팀|송준철|G1|AU_G", "emp_1485|글로벌사업센터|강임원|기술팀|권훈은|G1|DOE_Y,TB_Y", "emp_1486|글로벌사업센터|강임원|기술팀|손윤민|G3|CL_G", "emp_1487|글로벌사업센터|강임원|기술팀|이훈재|G3|PE_Y", "emp_1488|글로벌사업센터|강임원|기술팀|전현동|G1|DA_G,ML_G", "emp_1489|글로벌사업센터|강임원|기술팀|허정현|G3|ML_Y,DA_Y", "emp_1490|글로벌사업센터|강임원|기술팀|손성상|G1|PP_Y,ML_G,CL_G", "emp_1491|글로벌사업센터|강임원|기술팀|배동훈|G2|PE_Y", "emp_1492|글로벌사업센터|강임원|기술팀|배민재|G2|TB_GC,PP_GC,AU_G,PE_B,CL_Y", "emp_1493|글로벌사업센터|강임원|기술팀|전현수|G1|CL_Y,AU_G,ML_Y", "emp_1494|글로벌사업센터|강임원|기술팀|백진수|G3|ML_GC,PE_GC,DS_B,DA_Y,AU_G", "emp_1495|글로벌사업센터|강임원|기술1팀|조훈지|G2|DS_B,ML_G,PP_G,DA_SC", "emp_1496|글로벌사업센터|강임원|기술1팀|강태지|G2|CL_Y,TB_G,DV_Y", "emp_1497|글로벌사업센터|강임원|기술1팀|오호정|G2|DOE_Y,TB_G,DS_Y", "emp_1498|글로벌사업센터|강임원|기술1팀|한훈성|G3|AU_Y,DA_G,DV_Y", "emp_1499|글로벌사업센터|강임원|기술1팀|김태철|G2|PP_Y", "emp_1500|글로벌사업센터|강임원|기술1팀|손민동|G2|DA_Y,TB_Y", "emp_1501|글로벌사업센터|강임원|기술1팀|허민성|G1|AU_Y,TB_Y", "emp_1502|글로벌사업센터|강임원|기술1팀|박민우|G2|PE_Y,AU_Y", "emp_1503|글로벌사업센터|강임원|기술1팀|서정훈|G3|DS_G,ML_Y", "emp_1504|글로벌사업센터|강임원|기술1팀|최호승|G3|PP_Y", "emp_1505|글로벌사업센터|강임원|기술1팀|서원철|G1|DOE_Y,DS_G,TB_Y", "emp_1506|글로벌사업센터|강임원|기술1팀|한우수|G1|DA_G", "emp_1507|글로벌사업센터|강임원|기술1팀|허우현|G2|PE_SC,DV_GC,CL_G,PP_SC,DOE_G,DA_Y,AU_SC,ML_SC,DS_SC,TB_B", "emp_1508|글로벌사업센터|강임원|기술1팀|문상윤|G2|TB_G,DV_G,DA_Y", "emp_1509|글로벌사업센터|강임원|기술1팀|송호태|G3|PE_SC,AU_B,CL_B,DV_GC", "emp_1510|글로벌사업센터|강임원|기술1팀|허성상|G1|", "emp_1511|글로벌사업센터|강임원|기술1팀|고준수|G1|", "emp_1512|글로벌사업센터|강임원|기술1팀|배준수|G2|", "emp_1513|글로벌사업센터|문임원|AX팀|김하수|G1|", "emp_1514|글로벌사업센터|문임원|AX팀|양도진|G1|", "emp_1515|글로벌사업센터|문임원|AX팀|박진준|G1|", "emp_1516|글로벌사업센터|문임원|AX팀|박우성|G1|", "emp_1517|글로벌사업센터|문임원|AX팀|박영현|G1|DOE_Y", "emp_1518|글로벌사업센터|문임원|AX팀|고현원|G2|PE_Y", "emp_1519|글로벌사업센터|문임원|AX팀|문재지|G1|DS_GC,PE_G,ML_B,PP_B", "emp_1520|글로벌사업센터|문임원|AX팀|손혁호|G1|PP_Y", "emp_1521|글로벌사업센터|문임원|AX팀|손영지|G1|DOE_GC,DS_Y,PE_GC", "emp_1522|글로벌사업센터|문임원|AX팀|류민진|G3|AU_Y", "emp_1523|글로벌사업센터|문임원|AX팀|허호수|G3|CL_Y", "emp_1524|글로벌사업센터|문임원|AX팀|최민훈|G2|CL_Y", "emp_1525|글로벌사업센터|문임원|AX팀|권연은|G2|TB_G,PP_Y,DOE_Y", "emp_1526|글로벌사업센터|문임원|AX팀|양원성|G2|DOE_Y", "emp_1527|글로벌사업센터|문임원|AX팀|전민훈|G1|AU_GC,DV_G,DA_B,DS_G,CL_GC,PE_GC,ML_G,DOE_SC", "emp_1528|글로벌사업센터|문임원|AX팀|남동수|G2|DV_Y,PE_Y,AU_G", "emp_1529|글로벌사업센터|문임원|AX팀|한우호|G1|ML_Y", "emp_1530|글로벌사업센터|문임원|AX팀|윤훈지|G3|DOE_Y,TB_Y", "emp_1531|글로벌사업센터|문임원|인사팀|송훈원|G1|DS_Y", "emp_1532|글로벌사업센터|문임원|인사팀|홍성성|G1|DA_Y", "emp_1533|글로벌사업센터|문임원|인사팀|고성훈|G1|DA_Y,PE_Y", "emp_1534|글로벌사업센터|문임원|인사팀|이현우|G1|AU_Y,DOE_Y", "emp_1535|글로벌사업센터|문임원|인사팀|서훈동|G2|PE_Y,CL_G", "emp_1536|글로벌사업센터|문임원|인사팀|홍훈성|G2|PE_Y,CL_Y,AU_Y", "emp_1537|글로벌사업센터|문임원|인사팀|박하민|G1|ML_G,TB_Y,PE_Y", "emp_1538|글로벌사업센터|문임원|인사팀|손준철|G1|DS_G,DA_Y", "emp_1539|글로벌사업센터|문임원|인사팀|홍진지|G3|CL_B,PP_GC,DV_Y,AU_G,PE_Y", "emp_1540|글로벌사업센터|문임원|인사팀|정훈우|G2|AU_Y,PE_Y", "emp_1541|글로벌사업센터|문임원|인사팀|오민민|G1|CL_Y", "emp_1542|글로벌사업센터|문임원|인사팀|정재성|G3|PE_Y,TB_G,ML_Y", "emp_1543|글로벌사업센터|문임원|인사팀|조승수|G2|AU_Y,DS_Y", "emp_1544|글로벌사업센터|문임원|인사팀|류수영|G1|DS_G,PE_SC,TB_SC,PP_B", "emp_1545|글로벌사업센터|문임원|인사팀|황승재|G1|PP_Y,DV_Y", "emp_1546|글로벌사업센터|문임원|인사팀|강민정|G2|DV_G", "emp_1547|글로벌사업센터|문임원|인사팀|권진진|G3|DS_G,DV_G,DA_B,PP_B,ML_GC", "emp_1548|글로벌사업센터|문임원|인사팀|정승진|G3|PE_Y,DOE_Y,PP_Y", "emp_1549|글로벌사업센터|문임원|기술2팀|손지수|G3|DA_Y,CL_Y", "emp_1550|글로벌사업센터|문임원|기술2팀|임우태|G3|DOE_Y,AU_Y,CL_G", "emp_1551|글로벌사업센터|문임원|기술2팀|한하우|G1|", "emp_1552|글로벌사업센터|문임원|기술2팀|임현지|G3|", "emp_1553|글로벌사업센터|문임원|기술2팀|조영은|G2|", "emp_1554|글로벌사업센터|문임원|기술2팀|홍성수|G2|", "emp_1555|글로벌사업센터|문임원|기술2팀|유우도|G2|", "emp_1556|글로벌사업센터|문임원|기술2팀|조재호|G1|", "emp_1557|글로벌사업센터|문임원|기술2팀|황수재|G3|", "emp_1558|글로벌사업센터|문임원|기술2팀|손현도|G3|TB_Y,ML_Y", "emp_1559|글로벌사업센터|문임원|기술2팀|유수영|G1|DV_Y", "emp_1560|글로벌사업센터|문임원|기술2팀|양호현|G2|PE_Y,ML_Y,AU_Y", "emp_1561|글로벌사업센터|문임원|기술2팀|강민민|G1|DA_G,AU_Y", "emp_1562|글로벌사업센터|문임원|기술2팀|송민상|G1|DOE_Y,ML_Y,PE_Y", "emp_1563|글로벌사업센터|문임원|기술2팀|서호성|G3|PE_G,AU_Y,CL_Y", "emp_1564|글로벌사업센터|문임원|기술2팀|류재수|G3|DA_Y,PE_G,AU_G", "emp_1565|글로벌사업센터|문임원|기술2팀|한호준|G3|DV_G", "emp_1566|글로벌사업센터|문임원|기술2팀|정재훈|G3|PE_Y,ML_Y", "emp_1567|글로벌사업센터|문임원|연구팀|조호동|G3|PP_Y,PE_Y,DS_Y", "emp_1568|글로벌사업센터|문임원|연구팀|안상현|G1|DOE_G", "emp_1569|글로벌사업센터|문임원|연구팀|윤재준|G3|PE_G,DS_G,ML_G", "emp_1570|글로벌사업센터|문임원|연구팀|김재재|G2|ML_Y,CL_G,DA_G", "emp_1571|글로벌사업센터|문임원|연구팀|안수현|G3|CL_G,DA_GC,DV_SC", "emp_1572|글로벌사업센터|문임원|연구팀|박성현|G3|PP_G,ML_Y,TB_Y", "emp_1573|글로벌사업센터|문임원|연구팀|박현동|G2|ML_G,DOE_G,CL_G", "emp_1574|글로벌사업센터|문임원|연구팀|홍정진|G3|AU_Y,DA_Y", "emp_1575|글로벌사업센터|문임원|연구팀|강혁아|G3|TB_Y,CL_G", "emp_1576|글로벌사업센터|문임원|연구팀|황진우|G2|ML_G,DOE_Y,CL_Y", "emp_1577|글로벌사업센터|문임원|연구팀|오진승|G3|PE_B,DA_B,TB_SC,ML_SC", "emp_1578|글로벌사업센터|문임원|연구팀|유민지|G1|PP_Y,CL_Y", "emp_1579|글로벌사업센터|문임원|연구팀|한영우|G1|PP_Y,TB_Y", "emp_1580|글로벌사업센터|문임원|연구팀|권현원|G2|PP_Y,AU_Y,CL_Y", "emp_1581|글로벌사업센터|문임원|연구팀|윤철동|G2|PE_Y,CL_G,PP_Y", "emp_1582|글로벌사업센터|문임원|연구팀|허민민|G2|DOE_Y", "emp_1583|글로벌사업센터|문임원|연구팀|손성수|G3|DV_Y,DOE_Y,PE_G", "emp_1584|글로벌사업센터|문임원|연구팀|배수훈|G2|DOE_G", "emp_1585|구매물류센터|안임원|전략팀|허연혁|G3|PP_Y,DV_G", "emp_1586|구매물류센터|안임원|전략팀|한동연|G1|CL_G,DV_G", "emp_1587|구매물류센터|안임원|전략팀|신상윤|G3|PE_Y", "emp_1588|구매물류센터|안임원|전략팀|양하은|G3|DS_SC,TB_SC,PE_G,CL_G,DA_SC,DV_G,DOE_Y,ML_B,AU_Y", "emp_1589|구매물류센터|안임원|전략팀|안지민|G2|ML_Y", "emp_1590|구매물류센터|안임원|전략팀|배준수|G2|PE_G,DS_Y,DA_Y", "emp_1591|구매물류센터|안임원|전략팀|정서동|G1|DA_G,AU_B,PE_B,DS_Y,ML_SC,CL_SC,DV_GC", "emp_1592|구매물류센터|안임원|전략팀|최동민|G1|", "emp_1593|구매물류센터|안임원|전략팀|임동정|G1|", "emp_1594|구매물류센터|안임원|전략팀|류재성|G1|", "emp_1595|구매물류센터|안임원|전략팀|이진성|G2|", "emp_1596|구매물류센터|안임원|전략팀|박현영|G2|", "emp_1597|구매물류센터|안임원|전략팀|고하수|G1|", "emp_1598|구매물류센터|안임원|전략팀|안수우|G2|", "emp_1599|구매물류센터|안임원|전략팀|권진수|G1|PE_Y,TB_B,DV_B,DS_SC,AU_GC", "emp_1600|구매물류센터|안임원|전략팀|배상민|G2|AU_G", "emp_1601|구매물류센터|안임원|전략팀|남진승|G1|PP_G", "emp_1602|구매물류센터|안임원|전략팀|최연동|G3|AU_Y,DOE_Y,CL_Y", "emp_1603|구매물류센터|안임원|기술팀|안지상|G1|DA_Y", "emp_1604|구매물류센터|안임원|기술팀|오재수|G3|PE_Y", "emp_1605|구매물류센터|안임원|기술팀|손민우|G1|DA_G,ML_G,CL_G", "emp_1606|구매물류센터|안임원|기술팀|류은재|G3|PE_Y", "emp_1607|구매물류센터|안임원|기술팀|류수정|G1|PE_GC,DA_GC,AU_GC,ML_SC,DOE_SC,TB_G,CL_Y", "emp_1608|구매물류센터|안임원|기술팀|송진동|G2|PP_G,PE_Y,DA_Y", "emp_1609|구매물류센터|안임원|기술팀|서수태|G3|CL_G", "emp_1610|구매물류센터|안임원|기술팀|박도승|G1|AU_Y,CL_G,PE_Y", "emp_1611|구매물류센터|안임원|기술팀|전영은|G2|DS_G,AU_G", "emp_1612|구매물류센터|안임원|기술팀|류성수|G3|PE_G,DS_G,CL_G", "emp_1613|구매물류센터|안임원|기술팀|배혁준|G1|CL_B,PP_B,DV_SC,DOE_G,TB_Y,ML_G,DA_SC,PE_G,DS_SC,AU_SC", "emp_1614|구매물류센터|안임원|기술팀|오우준|G2|CL_Y,DV_G", "emp_1615|구매물류센터|안임원|기술팀|서성영|G1|DA_Y,CL_Y", "emp_1616|구매물류센터|안임원|기술팀|배호지|G1|TB_G,DOE_G", "emp_1617|구매물류센터|안임원|기술팀|강성아|G3|ML_Y", "emp_1618|구매물류센터|안임원|기술팀|고우영|G3|DA_Y,ML_G,PE_B,PP_SC", "emp_1619|구매물류센터|안임원|기술팀|양우도|G3|PE_G,DA_SC,PP_B", "emp_1620|구매물류센터|안임원|기술팀|장원성|G1|DOE_G,CL_Y", "emp_1621|구매물류센터|안임원|회계팀|장수민|G2|AU_SC,DV_Y,ML_GC,PP_G,TB_B,CL_G,DA_B,DS_Y,PE_GC", "emp_1622|구매물류센터|안임원|회계팀|남상호|G2|PE_Y,CL_B,DOE_Y,DA_GC,DV_G", "emp_1623|구매물류센터|안임원|회계팀|안현현|G3|PP_G", "emp_1624|구매물류센터|안임원|회계팀|강현우|G2|PP_Y,AU_Y", "emp_1625|구매물류센터|안임원|회계팀|신하준|G3|DA_G,ML_Y,DOE_Y", "emp_1626|구매물류센터|안임원|회계팀|최정정|G2|PP_G,AU_Y,DA_G", "emp_1627|구매물류센터|안임원|회계팀|한훈지|G3|DS_B,DOE_SC,PP_G,TB_Y", "emp_1628|구매물류센터|안임원|회계팀|김상성|G2|DV_Y,PE_G", "emp_1629|구매물류센터|안임원|회계팀|양영동|G3|TB_Y,DV_Y", "emp_1630|구매물류센터|안임원|회계팀|백하우|G1|TB_G", "emp_1631|구매물류센터|안임원|회계팀|손지수|G2|DV_Y,PE_Y,AU_Y", "emp_1632|구매물류센터|안임원|회계팀|박훈준|G2|AU_SC,DA_G,DOE_SC,DV_GC,PE_Y,CL_SC,DS_Y", "emp_1633|구매물류센터|안임원|회계팀|권혁준|G2|PE_G,ML_G", "emp_1634|구매물류센터|안임원|회계팀|유현성|G2|ML_G", "emp_1635|구매물류센터|안임원|회계팀|류현재|G2|", "emp_1636|구매물류센터|안임원|회계팀|류동훈|G3|", "emp_1637|구매물류센터|안임원|회계팀|유은성|G2|", "emp_1638|구매물류센터|안임원|회계팀|윤우영|G2|", "emp_1639|구매물류센터|안임원|AX팀|안하호|G3|", "emp_1640|구매물류센터|안임원|AX팀|백서동|G2|DOE_Y", "emp_1641|구매물류센터|안임원|AX팀|남지재|G2|AU_Y,DV_Y", "emp_1642|구매물류센터|안임원|AX팀|장동태|G2|PE_Y", "emp_1643|구매물류센터|안임원|AX팀|안승수|G2|TB_G,DV_Y,PE_Y", "emp_1644|구매물류센터|안임원|AX팀|손연태|G1|TB_Y", "emp_1645|구매물류센터|안임원|AX팀|양훈민|G1|PE_Y,DS_Y,DA_Y", "emp_1646|구매물류센터|안임원|AX팀|홍진윤|G2|DS_Y,AU_G,PP_G", "emp_1647|구매물류센터|안임원|AX팀|임영진|G2|CL_Y,PE_B,PP_SC", "emp_1648|구매물류센터|안임원|AX팀|정동재|G2|DA_Y,DS_Y", "emp_1649|구매물류센터|안임원|AX팀|허지지|G1|DV_G,DOE_Y", "emp_1650|구매물류센터|안임원|AX팀|권재아|G2|CL_Y,ML_Y,DA_Y", "emp_1651|구매물류센터|안임원|AX팀|허민윤|G2|TB_SC,PE_SC,AU_G,PP_G,CL_SC,DV_Y,DA_GC,DS_SC,DOE_Y,ML_GC", "emp_1652|구매물류센터|안임원|AX팀|최동승|G2|AU_G,DOE_Y", "emp_1653|구매물류센터|안임원|AX팀|오태승|G3|DV_Y", "emp_1654|구매물류센터|안임원|AX팀|신수동|G2|DA_Y,ML_Y", "emp_1655|구매물류센터|안임원|AX팀|백훈정|G1|DA_G,PP_G", "emp_1656|구매물류센터|안임원|AX팀|류지은|G1|PP_Y,PE_Y", "emp_1657|구매물류센터|최임원|지원팀|윤진민|G3|TB_Y,DV_Y,DA_Y", "emp_1658|구매물류센터|최임원|지원팀|문철진|G2|AU_Y,DOE_Y,DA_G", "emp_1659|구매물류센터|최임원|지원팀|고재수|G2|DA_Y,AU_Y", "emp_1660|구매물류센터|최임원|지원팀|서준윤|G1|CL_Y", "emp_1661|구매물류센터|최임원|지원팀|오상현|G2|CL_G", "emp_1662|구매물류센터|최임원|지원팀|박성훈|G1|DV_G,DS_G", "emp_1663|구매물류센터|최임원|지원팀|송호상|G2|TB_Y", "emp_1664|구매물류센터|최임원|지원팀|류현동|G3|DA_Y,ML_G", "emp_1665|구매물류센터|최임원|지원팀|남수현|G1|DV_Y", "emp_1666|구매물류센터|최임원|지원팀|양연재|G3|DOE_Y,DS_G", "emp_1667|구매물류센터|최임원|지원팀|배진상|G1|DA_Y,AU_G", "emp_1668|구매물류센터|최임원|지원팀|권성태|G2|PP_G", "emp_1669|구매물류센터|최임원|지원팀|손우상|G3|DV_Y,AU_Y,PP_G", "emp_1670|구매물류센터|최임원|지원팀|조재영|G2|CL_SC,DOE_SC,TB_Y,AU_B", "emp_1671|구매물류센터|최임원|지원팀|이원상|G1|CL_G", "emp_1672|구매물류센터|최임원|지원팀|박준우|G2|DA_SC,TB_SC,AU_G,DS_Y,PP_Y,PE_SC,DV_GC,ML_G", "emp_1673|구매물류센터|최임원|지원팀|고은재|G1|", "emp_1674|구매물류센터|최임원|지원팀|안원정|G1|", "emp_1675|구매물류센터|최임원|품질팀|홍원재|G2|", "emp_1676|구매물류센터|최임원|품질팀|한민호|G2|", "emp_1677|구매물류센터|최임원|품질팀|황정상|G2|", "emp_1678|구매물류센터|최임원|품질팀|박상성|G2|", "emp_1679|구매물류센터|최임원|품질팀|김진진|G2|", "emp_1680|구매물류센터|최임원|품질팀|조훈동|G1|", "emp_1681|구매물류센터|최임원|품질팀|최동동|G1|AU_Y,PE_Y,PP_Y", "emp_1682|구매물류센터|최임원|품질팀|이상영|G2|TB_Y", "emp_1683|구매물류센터|최임원|품질팀|한진재|G1|DOE_Y,DS_G,PP_G", "emp_1684|구매물류센터|최임원|품질팀|문우현|G3|PP_G,DA_Y", "emp_1685|구매물류센터|최임원|품질팀|신상우|G1|PP_SC,DA_SC,TB_Y,ML_B", "emp_1686|구매물류센터|최임원|품질팀|서호우|G2|DV_G,TB_Y,PP_Y", "emp_1687|구매물류센터|최임원|품질팀|윤준수|G3|CL_G,PE_G,TB_B,ML_GC,AU_G", "emp_1688|구매물류센터|최임원|품질팀|유재호|G3|TB_B,DV_B,DS_GC,DA_G,CL_SC,DOE_B,PE_GC", "emp_1689|구매물류센터|최임원|품질팀|서태수|G2|TB_Y,DA_Y", "emp_1690|구매물류센터|최임원|품질팀|오진민|G2|PP_GC,CL_GC,DA_B,ML_B,DS_B,DOE_Y,DV_Y,TB_GC,PE_SC", "emp_1691|구매물류센터|최임원|품질팀|임승호|G2|DOE_Y,DA_Y", "emp_1692|구매물류센터|최임원|품질팀|유현정|G2|PP_Y,TB_GC,DS_Y", "emp_1693|인사조직센터|최임원|관리팀|윤우호|G3|DA_Y", "emp_1694|인사조직센터|최임원|관리팀|전지재|G3|ML_Y", "emp_1695|인사조직센터|최임원|관리팀|서윤훈|G2|PP_Y,DS_Y", "emp_1696|인사조직센터|최임원|관리팀|백철진|G2|CL_SC,ML_SC,PE_B,DS_Y,AU_SC,DA_GC,PP_G,DV_GC", "emp_1697|인사조직센터|최임원|관리팀|서우동|G2|PE_Y,ML_SC,CL_Y,TB_Y,DV_B", "emp_1698|인사조직센터|최임원|관리팀|손호민|G2|TB_SC,DA_SC,DOE_Y", "emp_1699|인사조직센터|최임원|관리팀|배영동|G2|ML_Y,DV_Y,PP_Y", "emp_1700|인사조직센터|최임원|관리팀|황영수|G2|CL_SC,AU_G,DV_G,PE_SC,DOE_SC,PP_GC,DA_SC,TB_SC,DS_SC", "emp_1701|인사조직센터|최임원|관리팀|남은훈|G2|DS_Y", "emp_1702|인사조직센터|최임원|관리팀|양상영|G2|CL_G,DOE_Y,PP_G", "emp_1703|인사조직센터|최임원|관리팀|고승동|G2|PP_Y,DV_Y", "emp_1704|인사조직센터|최임원|관리팀|최승진|G3|PE_Y", "emp_1705|인사조직센터|최임원|관리팀|유영동|G2|DS_Y", "emp_1706|인사조직센터|최임원|관리팀|조훈상|G2|PP_SC,DA_Y,CL_GC,AU_B,PE_B,DOE_GC", "emp_1707|인사조직센터|최임원|관리팀|전우동|G3|DV_SC,TB_B,DOE_GC,PP_B", "emp_1708|인사조직센터|최임원|관리팀|김은승|G1|TB_G", "emp_1709|인사조직센터|최임원|관리팀|권현민|G2|PE_G,TB_G", "emp_1710|인사조직센터|최임원|관리팀|신훈훈|G3|DS_Y", "emp_1711|인사조직센터|임임원|지원팀|유동우|G2|PE_SC,DOE_G,DA_Y", "emp_1712|인사조직센터|임임원|지원팀|신성현|G3|DA_Y,PE_Y", "emp_1713|인사조직센터|임임원|지원팀|최연진|G3|PE_G,ML_Y", "emp_1714|인사조직센터|임임원|지원팀|유은재|G2|DV_Y", "emp_1715|인사조직센터|임임원|지원팀|조동민|G1|", "emp_1716|인사조직센터|임임원|지원팀|황준지|G3|", "emp_1717|인사조직센터|임임원|지원팀|유은수|G1|", "emp_1718|인사조직센터|임임원|지원팀|권민연|G2|", "emp_1719|인사조직센터|임임원|지원팀|김호아|G1|", "emp_1720|인사조직센터|임임원|지원팀|조승호|G1|", "emp_1721|인사조직센터|임임원|지원팀|김상민|G1|", "emp_1722|인사조직센터|임임원|지원팀|최영호|G2|TB_Y,CL_Y,PP_Y", "emp_1723|인사조직센터|임임원|지원팀|장승수|G2|TB_G", "emp_1724|인사조직센터|임임원|지원팀|허동상|G2|PE_G,AU_Y", "emp_1725|인사조직센터|임임원|지원팀|정민재|G1|PE_SC,DA_B,PP_SC,DV_G", "emp_1726|인사조직센터|임임원|지원팀|류정성|G1|PE_Y", "emp_1727|인사조직센터|임임원|지원팀|강수정|G1|DA_B,TB_G,PE_SC,CL_GC,PP_Y", "emp_1728|인사조직센터|임임원|지원팀|권지서|G2|AU_Y,DS_Y,PP_Y", "emp_1729|인사조직센터|임임원|연구팀|허호윤|G1|PE_Y,DV_Y,AU_G", "emp_1730|인사조직센터|임임원|연구팀|조호하|G3|PE_GC,TB_G,ML_Y,DV_GC", "emp_1731|인사조직센터|임임원|연구팀|황민철|G1|PP_B,PE_B,CL_GC,DA_SC,DOE_SC,DV_B,AU_Y,DS_GC,TB_SC", "emp_1732|인사조직센터|임임원|연구팀|배재수|G2|ML_Y", "emp_1733|인사조직센터|임임원|연구팀|황연성|G2|DV_G,DOE_Y,PE_Y", "emp_1734|인사조직센터|임임원|연구팀|서현훈|G2|ML_G,DA_Y,TB_Y", "emp_1735|인사조직센터|임임원|연구팀|류호민|G3|TB_GC,DV_G,ML_SC,DS_SC,CL_G,DA_B,DOE_GC,AU_SC,PE_Y,PP_SC", "emp_1736|인사조직센터|임임원|연구팀|전수민|G2|TB_Y,DA_Y,PP_Y", "emp_1737|인사조직센터|임임원|연구팀|고승수|G3|PP_G,DA_Y,ML_Y", "emp_1738|인사조직센터|임임원|연구팀|전동현|G1|CL_G", "emp_1739|인사조직센터|임임원|연구팀|양수호|G3|TB_Y,DV_G", "emp_1740|인사조직센터|임임원|연구팀|안영민|G2|DA_SC,DV_SC,TB_SC,CL_SC,PE_GC,DS_SC,DOE_SC,AU_B,PP_Y,ML_Y", "emp_1741|인사조직센터|임임원|연구팀|허준서|G2|PE_G,DOE_Y", "emp_1742|인사조직센터|임임원|연구팀|황진동|G2|CL_Y,AU_Y,DS_G", "emp_1743|인사조직센터|임임원|연구팀|조성훈|G3|PE_Y,DOE_Y", "emp_1744|인사조직센터|임임원|연구팀|강우우|G3|PE_B,DV_G,DA_SC,DS_SC,ML_B,CL_GC", "emp_1745|인사조직센터|임임원|연구팀|윤현훈|G3|PP_Y,ML_Y,AU_Y", "emp_1746|인사조직센터|임임원|연구팀|유승승|G1|CL_G,AU_Y,DV_Y", "emp_1747|인사조직센터|임임원|회계팀|배동성|G1|AU_G,TB_Y", "emp_1748|인사조직센터|임임원|회계팀|류동지|G2|DOE_Y,CL_Y", "emp_1749|인사조직센터|임임원|회계팀|최우성|G2|ML_G,DV_G", "emp_1750|인사조직센터|임임원|회계팀|권영동|G3|AU_G,PP_G", "emp_1751|인사조직센터|임임원|회계팀|김재정|G2|AU_GC,PP_G,TB_GC,DV_SC,DS_GC,CL_GC", "emp_1752|인사조직센터|임임원|회계팀|신영아|G3|PE_Y", "emp_1753|인사조직센터|임임원|회계팀|류민민|G2|DOE_Y", "emp_1754|인사조직센터|임임원|회계팀|임성민|G2|ML_Y,TB_Y,DV_GC", "emp_1755|인사조직센터|임임원|회계팀|서철우|G1|DS_SC,DOE_G,DV_Y,PE_SC,CL_B,DA_SC,AU_Y", "emp_1756|인사조직센터|임임원|회계팀|권연현|G3|", "emp_1757|인사조직센터|임임원|회계팀|유영재|G3|", "emp_1758|인사조직센터|임임원|회계팀|장재성|G3|", "emp_1759|인사조직센터|임임원|회계팀|배영민|G3|", "emp_1760|인사조직센터|임임원|회계팀|백혁승|G1|", "emp_1761|인사조직센터|임임원|회계팀|한상철|G3|", "emp_1762|인사조직센터|임임원|회계팀|송원수|G2|", "emp_1763|인사조직센터|임임원|회계팀|임은지|G3|PP_GC,PE_SC,TB_B,DV_SC,DS_SC,DOE_SC", "emp_1764|인사조직센터|임임원|회계팀|오민준|G1|CL_Y,PE_Y,AU_GC,PP_GC", "emp_1765|인사조직센터|임임원|지원1팀|윤승민|G2|CL_Y", "emp_1766|인사조직센터|임임원|지원1팀|장성민|G2|AU_Y", "emp_1767|인사조직센터|임임원|지원1팀|송승훈|G1|DA_SC,DOE_B,CL_GC,PE_SC,DS_B,ML_GC,TB_Y", "emp_1768|인사조직센터|임임원|지원1팀|임동우|G2|TB_G", "emp_1769|인사조직센터|임임원|지원1팀|오승동|G1|ML_B,AU_B,PP_SC", "emp_1770|인사조직센터|임임원|지원1팀|유우훈|G3|TB_Y,AU_Y", "emp_1771|인사조직센터|임임원|지원1팀|안하민|G3|AU_Y", "emp_1772|인사조직센터|임임원|지원1팀|정훈승|G3|PE_Y,CL_Y,TB_G", "emp_1773|인사조직센터|임임원|지원1팀|유호동|G1|PP_Y", "emp_1774|인사조직센터|임임원|지원1팀|고민성|G3|PP_Y", "emp_1775|인사조직센터|임임원|지원1팀|양우동|G3|CL_G,PE_G,DV_SC,AU_B,DOE_G,ML_SC,DA_SC", "emp_1776|인사조직센터|임임원|지원1팀|임성태|G3|DOE_SC,DA_SC,ML_Y,TB_SC,DV_GC,AU_SC", "emp_1777|인사조직센터|임임원|지원1팀|장정준|G1|CL_G", "emp_1778|인사조직센터|임임원|지원1팀|조재준|G2|AU_Y,DV_Y", "emp_1779|인사조직센터|임임원|지원1팀|손훈정|G1|AU_Y,ML_Y,DA_G", "emp_1780|인사조직센터|임임원|지원1팀|김윤현|G2|ML_Y", "emp_1781|인사조직센터|임임원|지원1팀|전정민|G2|DOE_Y,PP_Y,ML_Y", "emp_1782|인사조직센터|임임원|지원1팀|손철호|G2|AU_Y,PE_Y", "emp_1783|인사조직센터|임임원|AX팀|안지수|G3|DS_GC,DV_GC,ML_GC,TB_SC,AU_SC,PE_Y", "emp_1784|인사조직센터|임임원|AX팀|이수훈|G3|DS_Y,TB_Y,PE_Y", "emp_1785|인사조직센터|임임원|AX팀|백우지|G2|CL_Y", "emp_1786|인사조직센터|임임원|AX팀|윤승동|G2|DA_Y,DS_G", "emp_1787|인사조직센터|임임원|AX팀|남호민|G3|DA_G,DOE_Y", "emp_1788|인사조직센터|임임원|AX팀|서성상|G2|AU_SC,DOE_G,DS_SC,DV_GC,PP_SC,PE_Y", "emp_1789|인사조직센터|임임원|AX팀|이수정|G1|DV_Y,DS_G", "emp_1790|인사조직센터|임임원|AX팀|유민진|G3|PP_SC,DA_G,DOE_G,TB_SC", "emp_1791|인사조직센터|임임원|AX팀|신성현|G3|DS_Y,DV_Y,DA_Y", "emp_1792|인사조직센터|임임원|AX팀|오훈호|G3|DOE_Y,AU_Y,DA_G", "emp_1793|인사조직센터|임임원|AX팀|고준민|G1|DS_G,AU_Y", "emp_1794|인사조직센터|임임원|AX팀|서은정|G1|DV_G,CL_Y", "emp_1795|인사조직센터|임임원|AX팀|박수훈|G1|TB_Y", "emp_1796|인사조직센터|임임원|AX팀|백호진|G2|DA_G,CL_G,TB_G", "emp_1797|인사조직센터|임임원|AX팀|조은동|G3|", "emp_1798|인사조직센터|임임원|AX팀|권준재|G1|", "emp_1799|인사조직센터|임임원|AX팀|정지은|G3|", "emp_1800|인사조직센터|임임원|AX팀|최우윤|G2|"];
+
+// Seed dispatch history for executives over the last 1 year
+const INITIAL_EXEC_HISTORY: Record<string, EmailRecord[]> = {"이임원": [{"id": "eh-1", "date": "2026-08-18 10:15", "sender": "인사혁신담당 <hr.ax@axage.corp>", "subject": "[AXAGE 배지 매니징] 기초소재사업본부 배지 미충족 인원 독려 지휘 요청", "recipient": "이임원 전무 <executive.lee@axage.corp>", "targetCount": 72, "preview": "기초소재사업본부 품질팀, 구매팀, 연구팀, 회계팀 소속 미충족 인원 72명에 대한 AX 필수 배지 취득 지휘를 요청드렸습니다."}, {"id": "eh-2", "date": "2026-05-12 14:30", "sender": "인사혁신담당 <hr.ax@axage.corp>", "subject": "[AXAGE 배지 매니징] 상반기 AX 배지 직급별 취득 점검 및 조직 지휘 요청", "recipient": "이임원 전무 <executive.lee@axage.corp>", "targetCount": 72, "preview": "상반기 배지 취득 마감에 앞서 소속 인원들의 시험 응시 및 자격 취득 지도 요청."}], "송임원": [{"id": "eh-3", "date": "2026-09-02 09:40", "sender": "인사혁신담당 <hr.ax@axage.corp>", "subject": "[AXAGE 배지 매니징] 첨단소재사업본부 배지 취득 미충족 인원 지휘 요청", "recipient": "송임원 상무 <executive.song@axage.corp>", "targetCount": 72, "preview": "첨단소재사업본부 품질팀, 구매팀, 전략팀 대상 미취득자 역량 강화 지휘 요청."}], "윤임원": [{"id": "eh-4", "date": "2026-07-25 11:20", "sender": "인사혁신담당 <hr.ax@axage.corp>", "subject": "[AXAGE 배지 매니징] 특수화학/경영지원센터 배지 취득 현황 지휘 요청", "recipient": "윤임원 전무 <executive.yoon@axage.corp>", "targetCount": 144, "preview": "소속 조직 144명의 AX 배지 미충족 인원에 대한 직급별 필수 배지 취득 집중 코칭 독려."}], "손임원": [{"id": "eh-5", "date": "2026-08-28 16:05", "sender": "인사혁신담당 <hr.ax@axage.corp>", "subject": "[AXAGE 배지 매니징] 바이오소재/에너지소재/품질안전센터 배지 취득 독려 요청", "recipient": "손임원 부사장 <executive.sohn@axage.corp>", "targetCount": 263, "preview": "관할 본부별 미충족 구성원 263명에 대한 하반기 집중 취득 프로세스 지휘 요청."}]};
+
+// Generate realistic seed dispatch history for some members
+const INITIAL_MEMBER_HISTORY: Record<string, EmailRecord[]> = {
+  emp_1: [
+    {
+      id: 'mh-1',
+      date: '2026-07-15 11:00',
+      sender: '인사혁신담당 <hr.ax@axage.corp>',
+      subject: '[AXAGE 배지 권고] 고혁호님 G3 직급 필수 배지(ML_B, AU_B, PP_B) 취득 권고',
+      recipient: '고혁호 G3 <혁호.고@axage.corp>',
+      preview: '고혁호님의 현재 G3 필수 배지 기준 미충족 상태에 대해 3분기 사내 AX 아카데미 수강 및 시험 응시를 안내드렸습니다.'
+    }
+  ],
+  emp_2: [
+    {
+      id: 'mh-2',
+      date: '2026-08-01 14:20',
+      sender: '인사혁신담당 <hr.ax@axage.corp>',
+      subject: '[AXAGE 배지 권고] 권준성님 필수 배지 추가 취득 안내',
+      recipient: '권준성 G3 <준성.권@axage.corp>',
+      preview: '필수 배지 취득 기한 경과 방지를 위한 8월 상시 테스트 일정 안내.'
+    }
+  ]
+};
+
+// Monthly historical trend (last 10 months: 2026.01 ~ 2026.10)
+const MONTHLY_TREND_DATA = [
+  { month: '2026.01', G1: 0.4, G2: 0.3, G3: 0.2, total: 0.3 },
+  { month: '2026.02', G1: 0.6, G2: 0.4, G3: 0.2, total: 0.4 },
+  { month: '2026.03', G1: 0.7, G2: 0.5, G3: 0.4, total: 0.5 },
+  { month: '2026.04', G1: 0.9, G2: 0.7, G3: 0.4, total: 0.7 },
+  { month: '2026.05', G1: 1.1, G2: 0.8, G3: 0.6, total: 0.8 },
+  { month: '2026.06', G1: 1.3, G2: 1.0, G3: 0.6, total: 1.0 },
+  { month: '2026.07', G1: 1.5, G2: 1.1, G3: 0.8, total: 1.1 },
+  { month: '2026.08', G1: 1.5, G2: 1.2, G3: 0.8, total: 1.2 },
+  { month: '2026.09', G1: 1.7, G2: 1.4, G3: 0.8, total: 1.3 },
+  { month: '2026.10', G1: 1.7, G2: 1.4, G3: 0.8, total: 1.3 }
+];
+
+// ==========================================
+// 2. MAIN APPLICATION COMPONENT
+// ==========================================
+
+export default function App() {
+  // Master Members State (parsed from packed data)
+  const [members, setMembers] = useState<MemberProcess[]>(() => {
+    return PACKED_MEMBERS_DATA.map((line) => {
+      const parts = line.split('|');
+      const id = parts[0];
+      const org = parts[1];
+      const executive = parts[2];
+      const team = parts[3];
+      const name = parts[4];
+      const rank = parts[5] as 'G1' | 'G2' | 'G3';
+      const badges = parts[6] ? parts[6].split(',') : [];
+
+      const reqs = REQ_MAP[rank] || [];
+      const missingBadges = reqs.filter((req) => !hasBadgeQualified(badges, req));
+      const isFulfilled = missingBadges.length === 0;
+
+      return {
+        id,
+        org,
+        executive,
+        team,
+        name,
+        rank,
+        badges,
+        missingBadges,
+        isFulfilled,
+        deficientCount: missingBadges.length
+      };
+    });
+  });
+
+  // UI States
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<string>('2026-10-08 17:38:32');
+
+  // Email Histories State
+  const [execEmailHistory, setExecEmailHistory] = useState<Record<string, EmailRecord[]>>(INITIAL_EXEC_HISTORY);
+  const [memberEmailHistory, setMemberEmailHistory] = useState<Record<string, EmailRecord[]>>(INITIAL_MEMBER_HISTORY);
+
+  // Selection state for Executives (Left table)
+  const [selectedExecs, setSelectedExecs] = useState<Set<string>>(new Set());
+
+  // Selection state for Members (Right table)
+  const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
+
+  // Search & Filter state for Members
+  const [memberSearch, setMemberSearch] = useState('');
+  const [filterOrg, setFilterOrg] = useState('ALL');
+  const [filterRank, setFilterRank] = useState<'ALL' | 'G1' | 'G2' | 'G3'>('ALL');
+  const [filterStatus, setFilterStatus] = useState<'ALL' | 'UNFULFILLED' | 'FULFILLED'>('ALL');
+  const [memberPage, setMemberPage] = useState(1);
+  const rowsPerPage = 20;
+
+  // Active Modals State
+  const [activeExecModal, setActiveExecModal] = useState<string | null>(null);
+  const [activeMemberModal, setActiveMemberModal] = useState<MemberProcess | null>(null);
+  const [activeBulkExecModal, setActiveBulkExecModal] = useState(false);
+  const [activeBulkMemberModal, setActiveBulkMemberModal] = useState(false);
+
+  // Modal Email Form Edit & Tab States
+  const [modalMode, setModalMode] = useState<'VIEW' | 'EDIT' | 'HISTORY'>('VIEW');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+
+  // Toast auto-dismiss
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3500);
+  };
+
+  // 1. 배지정보 새로고침 핸들러
+  const handleRefreshBadges = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      setIsRefreshing(false);
+      const now = new Date();
+      const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+      setLastSyncTime(timeStr);
+      showToast('업데이트 완료되었습니다.');
+    }, 700);
+  };
+
+  // ==========================================
+  // 3. STATISTICAL CALCULATIONS
+  // ==========================================
+
+  // Overall KPI
+  const stats = useMemo(() => {
+    const total = members.length;
+    const fulfilled = members.filter((m) => m.isFulfilled).length;
+    const unfulfilled = total - fulfilled;
+    const fulfilledRate = total > 0 ? (fulfilled / total) * 100 : 0;
+
+    const rankStats = {
+      G1: { total: 0, fulfilled: 0 },
+      G2: { total: 0, fulfilled: 0 },
+      G3: { total: 0, fulfilled: 0 }
+    };
+
+    members.forEach((m) => {
+      rankStats[m.rank].total += 1;
+      if (m.isFulfilled) rankStats[m.rank].fulfilled += 1;
+    });
+
+    return {
+      total,
+      fulfilled,
+      unfulfilled,
+      fulfilledRate,
+      rankStats
+    };
+  }, [members]);
+
+  // Executive list sorted by highest unfulfilled rate (Requirement 5)
+  const execList = useMemo(() => {
+    const map: Record<string, { executive: string; org: string; total: number; fulfilled: number; unfulfilled: number; members: MemberProcess[] }> = {};
+
+    members.forEach((m) => {
+      if (!map[m.executive]) {
+        map[m.executive] = {
+          executive: m.executive,
+          org: m.org,
+          total: 0,
+          fulfilled: 0,
+          unfulfilled: 0,
+          members: []
+        };
+      }
+      map[m.executive].total += 1;
+      map[m.executive].members.push(m);
+      if (m.isFulfilled) {
+        map[m.executive].fulfilled += 1;
+      } else {
+        map[m.executive].unfulfilled += 1;
+      }
+    });
+
+    // Sort descending by unfulfilled rate (highest unfulfilled rate first)
+    return Object.values(map).sort((a, b) => {
+      const rateA = a.unfulfilled / a.total;
+      const rateB = b.unfulfilled / b.total;
+      if (rateB !== rateA) return rateB - rateA;
+      return b.unfulfilled - a.unfulfilled;
+    });
+  }, [members]);
+
+  // Badge Acquisition Rates (Requirement 3 - sorted in ascending order of acquisition rate)
+  const badgeRates = useMemo(() => {
+    const targetBadges: Record<string, { badge: string; reqRanks: string[]; denominator: number; numerator: number }> = {};
+
+    // Initialize required badges across ranks
+    (['G1', 'G2', 'G3'] as const).forEach((rank) => {
+      REQ_MAP[rank].forEach((b) => {
+        if (!targetBadges[b]) {
+          targetBadges[b] = { badge: b, reqRanks: [], denominator: 0, numerator: 0 };
+        }
+        if (!targetBadges[b].reqRanks.includes(rank)) {
+          targetBadges[b].reqRanks.push(rank);
+        }
+      });
+    });
+
+    // Calculate numerator & denominator
+    members.forEach((m) => {
+      const reqs = REQ_MAP[m.rank];
+      reqs.forEach((req) => {
+        targetBadges[req].denominator += 1;
+        if (hasBadgeQualified(m.badges, req)) {
+          targetBadges[req].numerator += 1;
+        }
+      });
+    });
+
+    // Sort ascending (lowest acquisition rate first)
+    return Object.values(targetBadges).sort((a, b) => {
+      const rateA = a.denominator > 0 ? a.numerator / a.denominator : 0;
+      const rateB = b.denominator > 0 ? b.numerator / b.denominator : 0;
+      return rateA - rateB;
+    });
+  }, [members]);
+
+  // Filtered & Sorted Members List (Requirement 8 - unfulfilled members first)
+  const filteredMembers = useMemo(() => {
+    let result = members.filter((m) => {
+      if (filterOrg !== 'ALL' && m.org !== filterOrg) return false;
+      if (filterRank !== 'ALL' && m.rank !== filterRank) return false;
+      if (filterStatus === 'UNFULFILLED' && m.isFulfilled) return false;
+      if (filterStatus === 'FULFILLED' && !m.isFulfilled) return false;
+      if (memberSearch.trim()) {
+        const query = memberSearch.trim().toLowerCase();
+        const matchName = m.name.toLowerCase().includes(query);
+        const matchTeam = m.team.toLowerCase().includes(query);
+        const matchExec = m.executive.toLowerCase().includes(query);
+        const matchOrg = m.org.toLowerCase().includes(query);
+        if (!matchName && !matchTeam && !matchExec && !matchOrg) return false;
+      }
+      return true;
+    });
+
+    // Sort: unfulfilled first (most deficient badges first), then fulfilled
+    result.sort((a, b) => {
+      if (a.isFulfilled !== b.isFulfilled) {
+        return a.isFulfilled ? 1 : -1;
+      }
+      if (b.deficientCount !== a.deficientCount) {
+        return b.deficientCount - a.deficientCount;
+      }
+      return a.name.localeCompare(b.name, 'ko');
+    });
+
+    return result;
+  }, [members, filterOrg, filterRank, filterStatus, memberSearch]);
+
+  const totalMemberPages = Math.ceil(filteredMembers.length / rowsPerPage) || 1;
+  const paginatedMembers = useMemo(() => {
+    const start = (memberPage - 1) * rowsPerPage;
+    return filteredMembers.slice(start, start + rowsPerPage);
+  }, [filteredMembers, memberPage]);
+
+  // Unique Orgs for filter dropdown
+  const uniqueOrgs = useMemo(() => {
+    return Array.from(new Set(members.map((m) => m.org))).sort();
+  }, [members]);
+
+  // ==========================================
+  // 4. SELECTION HANDLERS
+  // ==========================================
+
+  // Executive checkbox selection
+  const isAllExecsSelected = execList.length > 0 && selectedExecs.size === execList.length;
+  const toggleSelectAllExecs = () => {
+    if (isAllExecsSelected) {
+      setSelectedExecs(new Set());
+    } else {
+      setSelectedExecs(new Set(execList.map((e) => e.executive)));
+    }
+  };
+
+  const toggleSelectExec = (exec: string) => {
+    const next = new Set(selectedExecs);
+    if (next.has(exec)) next.delete(exec);
+    else next.add(exec);
+    setSelectedExecs(next);
+  };
+
+  // Member checkbox selection
+  const isAllMembersSelected = filteredMembers.length > 0 && selectedMembers.size === filteredMembers.length;
+  const toggleSelectAllMembers = () => {
+    if (isAllMembersSelected) {
+      setSelectedMembers(new Set());
+    } else {
+      setSelectedMembers(new Set(filteredMembers.map((m) => m.id)));
+    }
+  };
+
+  const toggleSelectMember = (id: string) => {
+    const next = new Set(selectedMembers);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedMembers(next);
+  };
+
+  // ==========================================
+  // 5. EMAIL MODAL ACTIONS (REQUIREMENT 6 & 8)
+  // ==========================================
+
+  // Open Executive Modal (Requirement 6)
+  const openExecModal = (execName: string) => {
+    const execData = execList.find((e) => e.executive === execName);
+    if (!execData) return;
+
+    const unfulfilledMembers = execData.members.filter((m) => !m.isFulfilled);
+
+    const defaultSubject = `[AXAGE 배지 매니징] ${execName} 관리 조직 (${execData.org}) 배지 기준 미충족 인원 지휘 및 취득 독려 요청의 건`;
+
+    const memberListText = unfulfilledMembers
+      .map(
+        (m, idx) =>
+          `${idx + 1}. [${m.team}] ${m.name} (${m.rank}) - 현재 배지: ${m.badges.length ? m.badges.join(', ') : '없음'} | 추가 요구 필수 배지: ${m.missingBadges.join(', ')}`
+      )
+      .join('\n');
+
+    const defaultBody = `안녕하십니까, ${execName}님.
+인사혁신 / AX 추진 본부입니다.
+
+귀하께서 총괄 관리하고 계신 ${execData.org}의 구성원 중, 2026년 직급별 필수 AX 배지 취득 기준을 현재 충족하지 못한 인원이 확인되어 적극적인 지휘와 독려를 요청드립니다.
+
+■ 관할 조직 배지 취득 현황 요약
+- 총 관리 인원: ${execData.total}명
+- 배지 취득 기준 충족: ${execData.fulfilled}명 (${((execData.fulfilled / execData.total) * 100).toFixed(1)}%)
+- 배지 기준 미충족 인원: ${unfulfilledMembers.length}명 (${((unfulfilledMembers.length / execData.total) * 100).toFixed(1)}%)
+
+■ 미충족 구성원 및 추가 요구 배지 목록:
+${memberListText}
+
+각 구성원이 시기를 놓치지 않고 필수 배지를 취득하여 조직 전반의 디지털 전환 역량이 강화될 수 있도록 많은 지도와 관심 부탁드립니다.
+
+감사합니다.
+인사혁신 / AX 추진팀 드림`;
+
+    setActiveExecModal(execName);
+    setEmailSubject(defaultSubject);
+    setEmailBody(defaultBody);
+    setModalMode('VIEW');
+  };
+
+  // Open Member Modal (Requirement 8)
+  const openMemberModal = (m: MemberProcess) => {
+    const reqs = REQ_MAP[m.rank].join(', ');
+    const curr = m.badges.length ? m.badges.join(', ') : '미보유';
+    const missing = m.missingBadges.length ? m.missingBadges.join(', ') : '전부 충족';
+
+    const defaultSubject = `[AXAGE 배지 권고] ${m.name}님 ${m.rank} 직급 필수 배지 추가 취득 안내 및 권고`;
+    const defaultBody = `안녕하십니까, ${m.org} ${m.team} ${m.name}님.
+인사혁신 / AX 추진팀입니다.
+
+회사의 AX(AI Transformation) 역량 강화를 위해 도입된 직급별 필수 배지 제도와 관련하여, ${m.name}님의 배지 취득 현황 및 추가 요구 배지를 안내해 드립니다.
+
+■ 배지 취득 현황 점검
+- 소속 / 직급: ${m.org} ${m.team} / ${m.rank}
+- ${m.rank} 직급 필수 배지 기준: ${reqs}
+- 현재 취득 완료 배지: ${curr}
+- ${m.missingBadges.length ? `★ 추가 요구 배지 (부족 부분): ${missing}` : '모든 필수 배지 기준을 완료하셨습니다.'}
+
+${
+  m.missingBadges.length
+    ? `현재 부족한 배지는 금 분기 내에 조속히 취득하실 수 있도록 사내 교육 및 상시 평가 응시를 적극 권고드립니다. 시기를 놓치지 않고 취득하시어 개인 역량 향상 및 인사 평가에 불이익이 없도록 유의하시기 바랍니다.`
+    : `축하드립니다. ${m.name}님은 현재 직급에 요구되는 필수 배지 요건을 모두 충족하셨습니다.`
+}
+
+관련 교육 일정 및 시험 응시 링크는 사내 AXAGE 포털에서 확인하실 수 있습니다.
+
+감사합니다.
+인사혁신 / AX 추진팀 드림`;
+
+    setActiveMemberModal(m);
+    setEmailSubject(defaultSubject);
+    setEmailBody(defaultBody);
+    setModalMode('VIEW');
+  };
+
+  // Dispatch Email to Executive (Requirement 6)
+  const handleSendExecEmail = () => {
+    if (!activeExecModal) return;
+    const execData = execList.find((e) => e.executive === activeExecModal);
+    const unfulfilledCount = execData ? execData.unfulfilled : 0;
+
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const newRecord: EmailRecord = {
+      id: `eh-${Date.now()}`,
+      date: dateStr,
+      sender: '인사혁신담당 <hr.ax@axage.corp>',
+      subject: emailSubject,
+      recipient: `${activeExecModal} <executive.${activeExecModal.replace('임원', '')}@axage.corp>`,
+      targetCount: unfulfilledCount,
+      preview: emailBody.slice(0, 100) + '...'
+    };
+
+    setExecEmailHistory((prev) => ({
+      ...prev,
+      [activeExecModal]: [newRecord, ...(prev[activeExecModal] || [])]
+    }));
+
+    setActiveExecModal(null);
+    showToast('이메일이 발송되었습니다.');
+  };
+
+  // Dispatch Email to Member (Requirement 8)
+  const handleSendMemberEmail = () => {
+    if (!activeMemberModal) return;
+
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const newRecord: EmailRecord = {
+      id: `mh-${Date.now()}`,
+      date: dateStr,
+      sender: '인사혁신담당 <hr.ax@axage.corp>',
+      subject: emailSubject,
+      recipient: `${activeMemberModal.name} ${activeMemberModal.rank} <${activeMemberModal.name}@axage.corp>`,
+      preview: emailBody.slice(0, 100) + '...'
+    };
+
+    setMemberEmailHistory((prev) => ({
+      ...prev,
+      [activeMemberModal.id]: [newRecord, ...(prev[activeMemberModal.id] || [])]
+    }));
+
+    setActiveMemberModal(null);
+    showToast('이메일이 발송되었습니다.');
+  };
+
+  // Bulk Executive Email Send (Requirement 7)
+  const handleBulkExecSend = () => {
+    const count = selectedExecs.size;
+    setActiveBulkExecModal(false);
+    setSelectedExecs(new Set());
+    showToast(`이메일이 발송되었습니다. (총 ${count}명의 임원)`);
+  };
+
+  // Bulk Member Email Send (Requirement 9)
+  const handleBulkMemberSend = () => {
+    const count = selectedMembers.size;
+    setActiveBulkMemberModal(false);
+    setSelectedMembers(new Set());
+    showToast(`이메일이 발송되었습니다. (총 ${count}명의 인원)`);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
+      {/* ==========================================
+          HEADER SECTION (REQUIREMENT 1)
+      ========================================== */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200">
+        <div className="max-w-[1720px] mx-auto px-6 py-4 flex items-center justify-between gap-8">
+          {/* Brand & System Title */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-sm">
+              <Award className="w-5 h-5 text-indigo-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold tracking-tight text-slate-900">AXAGE 배지 매니징 시스템</h1>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  HR AX 포털
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                전사 임원 지휘 및 개인별 필수 배지 취득 현황 통합 모니터링 체계
+              </p>
+            </div>
+          </div>
+
+          {/* Right Top Action Bar (Requirement 1) */}
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
+              <Clock className="w-3.5 h-3.5 text-slate-400" />
+              <span>동기화 기준:</span>
+              <span className="font-mono text-slate-700 font-medium">{lastSyncTime}</span>
+            </div>
+
+            {/* 배지정보 새로고침 버튼 */}
+            <button
+              onClick={handleRefreshBadges}
+              disabled={isRefreshing}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg text-white transition-all shadow-sm ${
+                isRefreshing
+                  ? 'bg-indigo-400 cursor-not-allowed'
+                  : 'bg-indigo-600 hover:bg-indigo-700 active:scale-95'
+              }`}
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>배지정보 새로고침</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* ==========================================
+          MAIN CONTAINER
+      ========================================== */}
+      <main className="max-w-[1720px] mx-auto px-6 py-6 space-y-6">
+        {/* KPI SUMMARY CARDS (REQUIREMENT 4) */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
+              <span>전사 배지 충족율</span>
+              <Users className="w-4 h-4 text-indigo-500" />
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-bold font-mono text-slate-900 tabular-nums">
+                {stats.fulfilledRate.toFixed(1)}%
+              </span>
+              <span className="text-xs text-slate-500 font-mono">
+                ({stats.fulfilled.toLocaleString()} / {stats.total.toLocaleString()}명)
+              </span>
+            </div>
+            <div className="mt-2 w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-indigo-600 h-1.5 rounded-full transition-all duration-500"
+                style={{ width: `${stats.fulfilledRate}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
+              <span>미충족 인원 (집중 관리)</span>
+              <AlertTriangle className="w-4 h-4 text-rose-500" />
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-bold font-mono text-rose-600 tabular-nums">
+                {stats.unfulfilled.toLocaleString()}명
+              </span>
+              <span className="text-xs text-rose-600 font-semibold font-mono">
+                ({((stats.unfulfilled / stats.total) * 100).toFixed(1)}%)
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-slate-400">임원 지휘 및 1:1 독려 대상</p>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
+              <span>G1 직급 충족율</span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-mono">5개 필수</span>
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-bold font-mono text-slate-900 tabular-nums">
+                {stats.rankStats.G1.total > 0
+                  ? ((stats.rankStats.G1.fulfilled / stats.rankStats.G1.total) * 100).toFixed(1)
+                  : 0}
+                %
+              </span>
+              <span className="text-xs text-slate-500 font-mono">
+                ({stats.rankStats.G1.fulfilled} / {stats.rankStats.G1.total}명)
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-slate-400">DS_G, CL_G, DA_G, PE_G, DV_G</p>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
+              <span>G2 직급 충족율</span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono">4개 필수</span>
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-bold font-mono text-slate-900 tabular-nums">
+                {stats.rankStats.G2.total > 0
+                  ? ((stats.rankStats.G2.fulfilled / stats.rankStats.G2.total) * 100).toFixed(1)
+                  : 0}
+                %
+              </span>
+              <span className="text-xs text-slate-500 font-mono">
+                ({stats.rankStats.G2.fulfilled} / {stats.rankStats.G2.total}명)
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-slate-400">DA_B, PP_G, ML_G, AU_B</p>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
+              <span>G3 직급 충족율</span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 font-mono">3개 필수</span>
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-bold font-mono text-slate-900 tabular-nums">
+                {stats.rankStats.G3.total > 0
+                  ? ((stats.rankStats.G3.fulfilled / stats.rankStats.G3.total) * 100).toFixed(1)
+                  : 0}
+                %
+              </span>
+              <span className="text-xs text-slate-500 font-mono">
+                ({stats.rankStats.G3.fulfilled} / {stats.rankStats.G3.total}명)
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-slate-400">ML_B, AU_B, PP_B</p>
+          </div>
+        </section>
+
+        {/* ==========================================
+            UPPER CHARTS SECTION (REQUIREMENT 2 & 3)
+        ========================================== */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* LEFT CHART: 직급별 배지 기준 충족율 추이 (Requirement 2 & 4) */}
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-indigo-600" />
+                  <h2 className="text-base font-bold text-slate-900">
+                    직급별 배지 기준 충족율 월단위 추이
+                  </h2>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  직급별 인원수(분모) 대비 요구 배지 취득 성공 인원수(분자) 모니터링
+                </p>
+              </div>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-0.5 bg-blue-500 rounded" />
+                  <span className="text-slate-600">G1</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-0.5 bg-emerald-500 rounded" />
+                  <span className="text-slate-600">G2</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-0.5 bg-purple-500 rounded" />
+                  <span className="text-slate-600">G3</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-1 bg-slate-900 rounded" />
+                  <span className="text-slate-900 font-semibold">전사</span>
+                </span>
+              </div>
+            </div>
+
+            {/* SVG Multi-line Chart */}
+            <div className="h-64 w-full relative">
+              <svg className="w-full h-full overflow-visible" viewBox="0 0 540 200">
+                {/* Horizontal Grid lines */}
+                {[0, 0.5, 1.0, 1.5, 2.0].map((val, idx) => {
+                  const y = 170 - (val / 2.0) * 140;
+                  return (
+                    <g key={idx}>
+                      <line x1="40" y1={y} x2="520" y2={y} stroke="#f1f5f9" strokeWidth="1" />
+                      <text x="32" y={y + 4} textAnchor="end" className="text-[10px] fill-slate-400 font-mono">
+                        {val.toFixed(1)}%
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* X Axis Month Labels */}
+                {MONTHLY_TREND_DATA.map((d, idx) => {
+                  const x = 45 + idx * (470 / (MONTHLY_TREND_DATA.length - 1));
+                  return (
+                    <text
+                      key={idx}
+                      x={x}
+                      y="190"
+                      textAnchor="middle"
+                      className="text-[10px] fill-slate-400 font-mono"
+                    >
+                      {d.month.split('.')[1]}월
+                    </text>
+                  );
+                })}
+
+                {/* Line G1 (Blue) */}
+                <path
+                  d={MONTHLY_TREND_DATA.map((d, idx) => {
+                    const x = 45 + idx * (470 / (MONTHLY_TREND_DATA.length - 1));
+                    const y = 170 - (d.G1 / 2.0) * 140;
+                    return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`;
+                  }).join(' ')}
+                  fill="none"
+                  stroke="#3b82f6"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+
+                {/* Line G2 (Emerald) */}
+                <path
+                  d={MONTHLY_TREND_DATA.map((d, idx) => {
+                    const x = 45 + idx * (470 / (MONTHLY_TREND_DATA.length - 1));
+                    const y = 170 - (d.G2 / 2.0) * 140;
+                    return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`;
+                  }).join(' ')}
+                  fill="none"
+                  stroke="#10b981"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+
+                {/* Line G3 (Purple) */}
+                <path
+                  d={MONTHLY_TREND_DATA.map((d, idx) => {
+                    const x = 45 + idx * (470 / (MONTHLY_TREND_DATA.length - 1));
+                    const y = 170 - (d.G3 / 2.0) * 140;
+                    return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`;
+                  }).join(' ')}
+                  fill="none"
+                  stroke="#a855f7"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+
+                {/* Line Total (Slate-900) */}
+                <path
+                  d={MONTHLY_TREND_DATA.map((d, idx) => {
+                    const x = 45 + idx * (470 / (MONTHLY_TREND_DATA.length - 1));
+                    const y = 170 - (d.total / 2.0) * 140;
+                    return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`;
+                  }).join(' ')}
+                  fill="none"
+                  stroke="#0f172a"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+
+                {/* End Point Markers for 2026.10 */}
+                {(() => {
+                  const last = MONTHLY_TREND_DATA[MONTHLY_TREND_DATA.length - 1];
+                  const x = 515;
+                  return (
+                    <>
+                      <circle cx={x} cy={170 - (last.G1 / 2.0) * 140} r="3.5" fill="#3b82f6" />
+                      <circle cx={x} cy={170 - (last.G2 / 2.0) * 140} r="3.5" fill="#10b981" />
+                      <circle cx={x} cy={170 - (last.G3 / 2.0) * 140} r="3.5" fill="#a855f7" />
+                      <circle cx={x} cy={170 - (last.total / 2.0) * 140} r="4.5" fill="#0f172a" />
+                    </>
+                  );
+                })()}
+              </svg>
+            </div>
+
+            {/* Current Month Values Box */}
+            <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-mono text-slate-600">
+              <span className="text-slate-400">현재(2026.10):</span>
+              <span>G1: <strong className="text-blue-600">1.7%</strong> (9/539명)</span>
+              <span>G2: <strong className="text-emerald-600">1.4%</strong> (10/733명)</span>
+              <span>G3: <strong className="text-purple-600">0.8%</strong> (4/528명)</span>
+              <span>전사: <strong className="text-slate-900 font-bold">1.3%</strong> (23/1,800명)</span>
+            </div>
+          </div>
+
+          {/* RIGHT CHART: 배지별 취득율 그래프 (Requirement 3 - 낮은 순 정렬) */}
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Award className="w-5 h-5 text-indigo-600" />
+                    <h2 className="text-base font-bold text-slate-900">
+                      배지별 취득율 현황 (취득율 최저 순위)
+                    </h2>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    취득 대상 인원수(분모) 대비 실제 배지 취득 성공 인원수(분자) · 오름차순 정렬
+                  </p>
+                </div>
+                <span className="text-xs px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-medium">
+                  취득 취약 배지 우선
+                </span>
+              </div>
+
+              {/* Horizontal Bars */}
+              <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                {badgeRates.map((item, idx) => {
+                  const rate = item.denominator > 0 ? (item.numerator / item.denominator) * 100 : 0;
+                  const { cat, level } = parseBadge(item.badge);
+                  const info = BADGE_DICT[cat];
+                  const levelLabel = LEVEL_NAMES[level] || level;
+
+                  // Color gradient depending on rate severity
+                  let barColor = 'bg-rose-500';
+                  if (rate > 10) barColor = 'bg-amber-500';
+                  if (rate > 14) barColor = 'bg-indigo-500';
+
+                  return (
+                    <div key={item.badge} className="flex items-center gap-3 text-xs group">
+                      <div className="w-20 shrink-0 flex items-center gap-1 font-mono">
+                        <span className="font-bold text-slate-800">{item.badge}</span>
+                        <span className="text-[10px] text-slate-400">({item.reqRanks.join('/')})</span>
+                      </div>
+                      <div className="w-28 shrink-0 truncate text-slate-500 text-[11px]" title={`${info?.fullName || cat} (${levelLabel})`}>
+                        {info?.fullName || cat}
+                      </div>
+                      <div className="flex-1 bg-slate-100 rounded-full h-3 overflow-hidden relative">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                          style={{ width: `${Math.max(rate * 4, 3)}%` }}
+                        />
+                      </div>
+                      <div className="w-28 text-right shrink-0 font-mono">
+                        <span className="font-bold text-slate-900">{rate.toFixed(1)}%</span>
+                        <span className="text-[11px] text-slate-400 ml-1">
+                          ({item.numerator}/{item.denominator})
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-rose-500" /> 7% 미만 (최우선 집중 교육)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-500" /> 7% ~ 13%
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-indigo-500" /> 14% 이상
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* ==========================================
+            MAIN SPLIT MONITORING SECTION
+            (LEFT: EXECUTIVE MONITORING | RIGHT: PERSONAL MONITORING)
+        ========================================== */}
+        <section className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          {/* ==========================================
+              MAIN LEFT: 임원별 모니터링 & 지휘 이메일
+              (REQUIREMENTS 5, 6, 7)
+          ========================================== */}
+          <div className="xl:col-span-5 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col h-[750px]">
+            {/* Header */}
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-rose-600" />
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    임원별 배지 미충족율 순위 (지휘 관리)
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  미충족 인원 비중이 가장 높은 임원부터 순차 정렬
+                </p>
+              </div>
+
+              {/* Bulk Email Trigger (Requirement 7) */}
+              {selectedExecs.size > 0 && (
+                <button
+                  onClick={() => setActiveBulkExecModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>일괄 지휘 메일 ({selectedExecs.size}명)</span>
+                </button>
+              )}
+            </div>
+
+            {/* Table Control Bar */}
+            <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs text-slate-600">
+              <label className="flex items-center gap-2 cursor-pointer font-medium">
+                <input
+                  type="checkbox"
+                  checked={isAllExecsSelected}
+                  onChange={toggleSelectAllExecs}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span>전체선택 ({execList.length}명)</span>
+              </label>
+              <span className="text-[11px] text-slate-400">
+                선택됨: {selectedExecs.size}명
+              </span>
+            </div>
+
+            {/* Executives List Table (Requirement 5 & 6) */}
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+              {execList.map((item, index) => {
+                const unfRate = (item.unfulfilled / item.total) * 100;
+                const isSelected = selectedExecs.has(item.executive);
+                const historyCount = execEmailHistory[item.executive]?.length || 0;
+
+                return (
+                  <div
+                    key={item.executive}
+                    className={`p-3.5 hover:bg-slate-50 transition-colors flex items-center gap-3 ${
+                      isSelected ? 'bg-indigo-50/40' : ''
+                    }`}
+                  >
+                    {/* Checkbox (Requirement 7) */}
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelectExec(item.executive)}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+
+                    {/* Rank Number */}
+                    <span className="w-5 text-center text-xs font-mono font-bold text-slate-400">
+                      {index + 1}
+                    </span>
+
+                    {/* Executive Info & Click to open email modal (Requirement 6) */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openExecModal(item.executive)}
+                          className="font-bold text-sm text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 text-left"
+                          title="클릭하여 지휘 요청 이메일 발송 창 열기"
+                        >
+                          <span>{item.executive}</span>
+                          <ChevronRight className="w-3.5 h-3.5 text-indigo-400" />
+                        </button>
+                        <span className="text-xs text-slate-500 truncate">
+                          {item.org}
+                        </span>
+                        {historyCount > 0 && (
+                          <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                            발송 {historyCount}회
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Progress Bar of Unfulfilled */}
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                          <div
+                            className="bg-rose-500 h-2 rounded-full"
+                            style={{ width: `${unfRate}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-mono font-bold text-rose-600">
+                          {unfRate.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Stats & Direct Action Button */}
+                    <div className="text-right shrink-0 flex flex-col items-end gap-1">
+                      <span className="text-xs font-mono text-slate-600">
+                        <strong className="text-rose-600 font-bold">{item.unfulfilled}명</strong> / {item.total}명 미충족
+                      </span>
+                      <button
+                        onClick={() => openExecModal(item.executive)}
+                        className="px-2.5 py-1 text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition-colors flex items-center gap-1"
+                      >
+                        <Mail className="w-3 h-3 text-slate-500" />
+                        <span>지휘 메일</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ==========================================
+              MAIN RIGHT: 개인별 배지 현황 및 권고 이메일
+              (REQUIREMENTS 8, 9)
+          ========================================== */}
+          <div className="xl:col-span-7 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col h-[750px]">
+            {/* Header with Search & Filter */}
+            <div className="p-4 border-b border-slate-200 space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-indigo-600" />
+                    <h3 className="font-bold text-slate-900 text-sm">
+                      개인별 배지 취득 현황 (미충족자 순차 정렬)
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    이름 클릭 시 요구 배지 대비 부족 배지 확인 및 권고 이메일 발송
+                  </p>
+                </div>
+
+                {/* Bulk Member Email Trigger (Requirement 9) */}
+                {selectedMembers.size > 0 && (
+                  <button
+                    onClick={() => setActiveBulkMemberModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm shrink-0"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>일괄 독려 메일 ({selectedMembers.size}명)</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Filters & Search Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1 text-xs">
+                {/* Search */}
+                <div className="relative sm:col-span-2">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={memberSearch}
+                    onChange={(e) => {
+                      setMemberSearch(e.target.value);
+                      setMemberPage(1);
+                    }}
+                    placeholder="성명, 팀명, 임원명, 조직 검색..."
+                    className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                {/* Rank Filter */}
+                <select
+                  value={filterRank}
+                  onChange={(e) => {
+                    setFilterRank(e.target.value as any);
+                    setMemberPage(1);
+                  }}
+                  className="px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  <option value="ALL">직급 전체 (G1/G2/G3)</option>
+                  <option value="G1">G1 직급만</option>
+                  <option value="G2">G2 직급만</option>
+                  <option value="G3">G3 직급만</option>
+                </select>
+
+                {/* Status Filter */}
+                <select
+                  value={filterStatus}
+                  onChange={(e) => {
+                    setFilterStatus(e.target.value as any);
+                    setMemberPage(1);
+                  }}
+                  className="px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  <option value="ALL">상태 전체</option>
+                  <option value="UNFULFILLED">미충족자만 (권고 대상)</option>
+                  <option value="FULFILLED">충족자만</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Table Control Bar */}
+            <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs text-slate-600">
+              <label className="flex items-center gap-2 cursor-pointer font-medium">
+                <input
+                  type="checkbox"
+                  checked={isAllMembersSelected}
+                  onChange={toggleSelectAllMembers}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span>현재 필터 전체선택 ({filteredMembers.length}명)</span>
+              </label>
+              <span className="text-[11px] text-slate-400">
+                선택됨: {selectedMembers.size}명 · 전체 {members.length}명 중
+              </span>
+            </div>
+
+            {/* Members Table */}
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+              {paginatedMembers.map((m) => {
+                const isSelected = selectedMembers.has(m.id);
+                const historyCount = memberEmailHistory[m.id]?.length || 0;
+
+                return (
+                  <div
+                    key={m.id}
+                    className={`p-3 hover:bg-slate-50 transition-colors flex items-center gap-3 text-xs ${
+                      isSelected ? 'bg-indigo-50/40' : ''
+                    }`}
+                  >
+                    {/* Checkbox (Requirement 9) */}
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelectMember(m.id)}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+
+                    {/* Member Name (Clickable - Requirement 8) */}
+                    <div className="w-24 shrink-0">
+                      <button
+                        onClick={() => openMemberModal(m)}
+                        className="font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 text-left"
+                        title="클릭하여 배지 권고 이메일 발송 창 열기"
+                      >
+                        <span>{m.name}</span>
+                        <ChevronRight className="w-3 h-3 text-indigo-400" />
+                      </button>
+                      <span className="text-[10px] font-mono text-slate-500 px-1 py-0.2 rounded bg-slate-100">
+                        {m.rank}
+                      </span>
+                    </div>
+
+                    {/* Org / Team / Exec */}
+                    <div className="w-44 shrink-0 truncate text-slate-600">
+                      <div className="truncate font-medium">{m.team} · {m.executive}</div>
+                      <div className="text-[11px] text-slate-400 truncate">{m.org}</div>
+                    </div>
+
+                    {/* Badge Fulfillment Status & Deficient Badges */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {m.isFulfilled ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3" />
+                            충족 완료
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                            <XCircle className="w-3 h-3" />
+                            미충족 ({m.missingBadges.length}개 부족)
+                          </span>
+                        )}
+
+                        {/* Deficient Badges Pills */}
+                        {m.missingBadges.map((b) => (
+                          <span
+                            key={b}
+                            className="px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-mono"
+                          >
+                            +{b}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Current badges held */}
+                      <div className="mt-1 text-[11px] text-slate-400 truncate">
+                        보유: {m.badges.length ? m.badges.join(', ') : '취득 배지 없음'}
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    <div className="shrink-0 flex items-center gap-2">
+                      {historyCount > 0 && (
+                        <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                          발송 {historyCount}회
+                        </span>
+                      )}
+                      <button
+                        onClick={() => openMemberModal(m)}
+                        className="px-2.5 py-1 text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition-colors flex items-center gap-1"
+                      >
+                        <Mail className="w-3 h-3 text-slate-500" />
+                        <span>권고 메일</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {filteredMembers.length === 0 && (
+                <div className="p-8 text-center text-slate-400 text-xs">
+                  조건에 일치하는 구성원이 없습니다.
+                </div>
+              )}
+            </div>
+
+            {/* Pagination */}
+            <div className="p-3 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 bg-slate-50/50">
+              <span>
+                {(memberPage - 1) * rowsPerPage + 1} -{' '}
+                {Math.min(memberPage * rowsPerPage, filteredMembers.length)} / 총{' '}
+                {filteredMembers.length}명
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={memberPage <= 1}
+                  onClick={() => setMemberPage((p) => Math.max(p - 1, 1))}
+                  className="px-2.5 py-1 bg-white border border-slate-200 rounded disabled:opacity-40 hover:bg-slate-50"
+                >
+                  이전
+                </button>
+                <span className="font-mono text-slate-700">
+                  {memberPage} / {totalMemberPages}
+                </span>
+                <button
+                  disabled={memberPage >= totalMemberPages}
+                  onClick={() => setMemberPage((p) => Math.min(p + 1, totalMemberPages))}
+                  className="px-2.5 py-1 bg-white border border-slate-200 rounded disabled:opacity-40 hover:bg-slate-50"
+                >
+                  다음
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* ==========================================
+          MODAL 1: 임원 지휘 이메일 팝업 (REQUIREMENT 6)
+      ========================================== */}
+      {activeExecModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center text-rose-600">
+                  <ShieldAlert className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    {activeExecModal} 지휘 요청 이메일 발송
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    소속 조직 배지 취득 미충족 인원에 대한 조직원 독려 및 지휘 요청
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveExecModal(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 flex-1 overflow-y-auto space-y-4">
+              {modalMode === 'HISTORY' ? (
+                /* 과거 발송 정보 보기 뷰 */
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                      <History className="w-4 h-4 text-indigo-600" />
+                      <span>지난 1년간 {activeExecModal} 발송 이력 ({execEmailHistory[activeExecModal]?.length || 0}건)</span>
+                    </div>
+                    <span className="text-[11px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                      * 너무 자주 같은 내용을 발송하지 않도록 주의해 주세요.
+                    </span>
+                  </div>
+
+                  {execEmailHistory[activeExecModal]?.length ? (
+                    <div className="space-y-3">
+                      {execEmailHistory[activeExecModal].map((rec) => (
+                        <div key={rec.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-xs space-y-1.5">
+                          <div className="flex items-center justify-between text-slate-500 text-[11px]">
+                            <span className="font-mono font-medium text-slate-700">{rec.date}</span>
+                            <span>수신: {rec.recipient}</span>
+                          </div>
+                          <div className="font-bold text-slate-900">{rec.subject}</div>
+                          <p className="text-slate-600 text-[11px] leading-relaxed">{rec.preview}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center text-slate-400 text-xs">
+                      지난 1년간 발송된 이메일 기록이 없습니다.
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => setModalMode('VIEW')}
+                    className="w-full py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                  >
+                    이메일 작성 화면으로 돌아가기
+                  </button>
+                </div>
+              ) : (
+                /* 이메일 내용 보기 / 수정하기 뷰 */
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      받는 사람 (임원)
+                    </label>
+                    <input
+                      type="text"
+                      disabled
+                      value={`${activeExecModal} <executive.${activeExecModal.replace('임원', '')}@axage.corp>`}
+                      className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs font-mono text-slate-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      메일 제목
+                    </label>
+                    {modalMode === 'EDIT' ? (
+                      <input
+                        type="text"
+                        value={emailSubject}
+                        onChange={(e) => setEmailSubject(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-indigo-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    ) : (
+                      <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-900">
+                        {emailSubject}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-slate-700">
+                        메일 본문 (미충족 인원 및 요구 배지 리스트 포함)
+                      </label>
+                      {modalMode === 'EDIT' && (
+                        <span className="text-[11px] text-indigo-600 font-medium">
+                          * 내용 수정 중
+                        </span>
+                      )}
+                    </div>
+                    {modalMode === 'EDIT' ? (
+                      <textarea
+                        rows={12}
+                        value={emailBody}
+                        onChange={(e) => setEmailBody(e.target.value)}
+                        className="w-full p-3 bg-white border border-indigo-300 rounded-lg text-xs font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    ) : (
+                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono leading-relaxed whitespace-pre-wrap text-slate-800 max-h-[300px] overflow-y-auto">
+                        {emailBody}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer with 3 Required Buttons (Requirement 6) */}
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+              {/* Button 1: 과거 발송 정보 보기 */}
+              <button
+                type="button"
+                onClick={() => setModalMode(modalMode === 'HISTORY' ? 'VIEW' : 'HISTORY')}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors shadow-sm"
+              >
+                <History className="w-3.5 h-3.5 text-slate-500" />
+                <span>과거 발송 정보 보기</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                {/* Button 2: 수정하기 */}
+                <button
+                  type="button"
+                  onClick={() => setModalMode(modalMode === 'EDIT' ? 'VIEW' : 'EDIT')}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors shadow-sm ${
+                    modalMode === 'EDIT'
+                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                      : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>{modalMode === 'EDIT' ? '수정 완료' : '수정하기'}</span>
+                </button>
+
+                {/* Button 3: 그대로 발송하기 */}
+                <button
+                  type="button"
+                  onClick={handleSendExecEmail}
+                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm active:scale-95"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>그대로 발송하기</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          MODAL 2: 개인별 배지 권고 이메일 팝업 (REQUIREMENT 8)
+      ========================================== */}
+      {activeMemberModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
+                  <Award className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    {activeMemberModal.name} ({activeMemberModal.rank}) 배지 권고 이메일
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {activeMemberModal.org} · {activeMemberModal.team} · 관리임원: {activeMemberModal.executive}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveMemberModal(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 flex-1 overflow-y-auto space-y-4">
+              {/* Badge Comparison Cards */}
+              <div className="grid grid-cols-3 gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                <div>
+                  <span className="text-[11px] text-slate-500 block mb-1">직급 필수 기준:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {REQ_MAP[activeMemberModal.rank].map((b) => (
+                      <span key={b} className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-mono text-[10px]">
+                        {b}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-500 block mb-1">현재 보유 배지:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {activeMemberModal.badges.length ? (
+                      activeMemberModal.badges.map((b) => (
+                        <span key={b} className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-800 font-mono text-[10px]">
+                          {b}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-slate-400 text-[11px]">없음</span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[11px] text-rose-600 font-semibold block mb-1">추가 취득 요구 배지:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {activeMemberModal.missingBadges.length ? (
+                      activeMemberModal.missingBadges.map((b) => (
+                        <span key={b} className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 font-mono font-bold text-[10px]">
+                          {b}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-emerald-600 font-medium text-[11px]">전부 충족</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {modalMode === 'HISTORY' ? (
+                /* 과거 발송 정보 보기 뷰 */
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                      <History className="w-4 h-4 text-indigo-600" />
+                      <span>지난 1년간 {activeMemberModal.name}님 발송 이력 ({memberEmailHistory[activeMemberModal.id]?.length || 0}건)</span>
+                    </div>
+                    <span className="text-[11px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                      * 너무 자주 같은 내용을 발송하지 않도록 주의해 주세요.
+                    </span>
+                  </div>
+
+                  {memberEmailHistory[activeMemberModal.id]?.length ? (
+                    <div className="space-y-3">
+                      {memberEmailHistory[activeMemberModal.id].map((rec) => (
+                        <div key={rec.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-xs space-y-1.5">
+                          <div className="flex items-center justify-between text-slate-500 text-[11px]">
+                            <span className="font-mono font-medium text-slate-700">{rec.date}</span>
+                            <span>수신: {rec.recipient}</span>
+                          </div>
+                          <div className="font-bold text-slate-900">{rec.subject}</div>
+                          <p className="text-slate-600 text-[11px] leading-relaxed">{rec.preview}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center text-slate-400 text-xs">
+                      지난 1년간 발송된 권고 이메일 기록이 없습니다.
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => setModalMode('VIEW')}
+                    className="w-full py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                  >
+                    이메일 작성 화면으로 돌아가기
+                  </button>
+                </div>
+              ) : (
+                /* 이메일 내용 보기 / 수정하기 뷰 */
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      받는 사람 (개인)
+                    </label>
+                    <input
+                      type="text"
+                      disabled
+                      value={`${activeMemberModal.name} ${activeMemberModal.rank} <${activeMemberModal.name}@axage.corp>`}
+                      className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs font-mono text-slate-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      메일 제목
+                    </label>
+                    {modalMode === 'EDIT' ? (
+                      <input
+                        type="text"
+                        value={emailSubject}
+                        onChange={(e) => setEmailSubject(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-indigo-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    ) : (
+                      <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-900">
+                        {emailSubject}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-slate-700">
+                        메일 본문
+                      </label>
+                      {modalMode === 'EDIT' && (
+                        <span className="text-[11px] text-indigo-600 font-medium">
+                          * 내용 수정 중
+                        </span>
+                      )}
+                    </div>
+                    {modalMode === 'EDIT' ? (
+                      <textarea
+                        rows={10}
+                        value={emailBody}
+                        onChange={(e) => setEmailBody(e.target.value)}
+                        className="w-full p-3 bg-white border border-indigo-300 rounded-lg text-xs font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    ) : (
+                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono leading-relaxed whitespace-pre-wrap text-slate-800 max-h-[250px] overflow-y-auto">
+                        {emailBody}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer with 3 Required Buttons (Requirement 8) */}
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+              {/* Button 1: 과거 발송 정보 보기 */}
+              <button
+                type="button"
+                onClick={() => setModalMode(modalMode === 'HISTORY' ? 'VIEW' : 'HISTORY')}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors shadow-sm"
+              >
+                <History className="w-3.5 h-3.5 text-slate-500" />
+                <span>과거 발송 정보 보기</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                {/* Button 2: 수정하기 */}
+                <button
+                  type="button"
+                  onClick={() => setModalMode(modalMode === 'EDIT' ? 'VIEW' : 'EDIT')}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors shadow-sm ${
+                    modalMode === 'EDIT'
+                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                      : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>{modalMode === 'EDIT' ? '수정 완료' : '수정하기'}</span>
+                </button>
+
+                {/* Button 3: 그대로 발송하기 */}
+                <button
+                  type="button"
+                  onClick={handleSendMemberEmail}
+                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm active:scale-95"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>그대로 발송하기</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          MODAL 3: 임원 일괄 발송 모달 (REQUIREMENT 7)
+      ========================================== */}
+      {activeBulkExecModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <Mail className="w-5 h-5 text-rose-600" />
+                <h3 className="font-bold text-slate-900 text-sm">
+                  임원 일괄 지휘 메일 발송 ({selectedExecs.size}명)
+                </h3>
+              </div>
+              <button
+                onClick={() => setActiveBulkExecModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              선택하신 <strong className="text-rose-600 font-bold">{selectedExecs.size}명의 임원</strong>에게 각 임원이 총괄 관리하는 조직의 배지 미충족 구성원 명단 및 부족 배지 정보를 포함한 개별 지휘 요청 이메일을 일괄 발송합니다.
+            </p>
+
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1">
+              <span className="font-semibold text-slate-700 block mb-1">발송 대상 임원 목록:</span>
+              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
+                {Array.from(selectedExecs).map((ex) => (
+                  <span key={ex} className="px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-800 text-xs">
+                    {ex}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setActiveBulkExecModal(false)}
+                className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleBulkExecSend}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-sm"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>일괄 발송하기</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          MODAL 4: 개인 일괄 발송 모달 (REQUIREMENT 9)
+      ========================================== */}
+      {activeBulkMemberModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <Mail className="w-5 h-5 text-indigo-600" />
+                <h3 className="font-bold text-slate-900 text-sm">
+                  개인 일괄 배지 권고 메일 발송 ({selectedMembers.size}명)
+                </h3>
+              </div>
+              <button
+                onClick={() => setActiveBulkMemberModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              선택하신 <strong className="text-indigo-600 font-bold">{selectedMembers.size}명의 구성원</strong>에게 각 개인의 직급 필수 배지 대비 현재 부족한 배지 내역과 교육/응시 권고 이메일을 개별 일괄 발송합니다.
+            </p>
+
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1">
+              <span className="font-semibold text-slate-700 block mb-1">발송 대상 샘플 (총 {selectedMembers.size}명):</span>
+              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
+                {Array.from(selectedMembers)
+                  .slice(0, 15)
+                  .map((id) => {
+                    const m = members.find((x) => x.id === id);
+                    return (
+                      <span key={id} className="px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-800 text-xs">
+                        {m?.name} ({m?.rank})
+                      </span>
+                    );
+                  })}
+                {selectedMembers.size > 15 && (
+                  <span className="text-slate-400 text-xs self-center">... 외 {selectedMembers.size - 15}명</span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setActiveBulkMemberModal(false)}
+                className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleBulkMemberSend}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>일괄 발송하기</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          TOAST ALERT (NOTIFICATION MESSAGE)
+      ========================================== */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-800 text-xs font-medium animate-in slide-in-from-bottom-5 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+    </div>
+  );
+}
